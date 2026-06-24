@@ -1,0 +1,16 @@
+{
+  "_comment": "Your curated shortlist of GOOD entry projects for the exiting party after decoupling — chosen for location, transport (within ~800m MRT/LRT), rental demand, 70+ yr remaining lease, and capital-appreciation upside. ura_update.py pulls each project's recent transactions from URA and writes a realistic ENTRY price (20th percentile) into the calculator's PROJECTS list. 'name' MUST match URA's exact project spelling (find it on https://eservice.ura.gov.sg/property-market-information/pmiResidentialTransactionSearch). 'region' is OCR / RCR / CCR. 'why' is your one-line rationale shown to clients. Add, remove, and edit freely — this is your professional pick list.",
+  "projects": [
+    {"name": "Riverfront Residences",  "region": "OCR", "why": "Hougang riverfront, near Hougang MRT & Defu; value entry, steady rental demand"},
+    {"name": "The Tapestry",           "region": "OCR", "why": "Tampines, full facilities; HDB-upgrader catchment, resilient rental"},
+    {"name": "Affinity At Serangoon",  "region": "OCR", "why": "Serangoon, large project; value entry with North-East line connectivity"},
+    {"name": "The Florence Residences","region": "OCR", "why": "Hougang/Kovan, mega clubhouse concept; upgrader demand, rentable"},
+    {"name": "Treasure At Tampines",   "region": "OCR", "why": "Mega project by Tampines West MRT; strong upgrader & rental demand"},
+    {"name": "Parc Clematis",          "region": "OCR", "why": "Clementi, near MRT; rides west growth (JID/JLD), good rentability"},
+    {"name": "Parc Esta",              "region": "RCR", "why": "Eunos MRT, city-fringe; high tenant demand, appreciation track record"},
+    {"name": "Normanton Park",         "region": "RCR", "why": "Kent Ridge MRT, near one-north/Science Park; biz-hub rental base"},
+    {"name": "Stirling Residences",    "region": "RCR", "why": "Queenstown MRT, prime city-fringe; strong appreciation & rental"},
+    {"name": "Jadescape",              "region": "RCR", "why": "Marymount MRT, central; quality build, long-run appreciation"},
+    {"name": "Soleil @ Sinaran",       "region": "CCR", "why": "Novena MRT (D11), 99-yr; value CCR entry, strong medical-hub rental"}
+  ]
+}

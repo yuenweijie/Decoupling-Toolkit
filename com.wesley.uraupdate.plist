@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.wesley.uraupdate</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>cd "/Users/yuenweijie/Desktop/Co-work Battlefield/Decoupling Calculator/Decoupling Advisory" &amp;&amp; python3 ura_update.py</string>
+  </array>
+  <!-- Runs Tuesday (Weekday 2) and Friday (Weekday 5) at 19:30, after URA's end-of-day refresh -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Users/yuenweijie/Desktop/Co-work Battlefield/Decoupling Calculator/Decoupling Advisory/ura_update.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/yuenweijie/Desktop/Co-work Battlefield/Decoupling Calculator/Decoupling Advisory/ura_update.log</string>
+</dict>
+</plist>

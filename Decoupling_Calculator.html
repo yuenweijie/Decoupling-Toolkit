@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decoupling Toolkit</title>
+<style>
+  :root{
+    --navy:#0f2540; --navy2:#1b3a5e; --gold:#c8a24a; --gold2:#e0c074;
+    --ink:#1a2230; --muted:#65728a; --line:#e3e8f0; --bg:#f4f6fa;
+    --good:#1f8a5b; --goodbg:#e6f5ee; --bad:#c0392b; --badbg:#fbeae8;
+    --warn:#b9791a; --warnbg:#fbf2e2; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);line-height:1.45;font-size:15px;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 16px 80px;}
+  header.top{background:linear-gradient(135deg,#e23744,#b3122a);color:#fff;padding:26px 0 30px;}
+  header.top .wrap{padding-top:0;padding-bottom:0;}
+  .brandrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .badge{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.85);font-weight:700}
+  h1{font-size:25px;margin:8px 0 6px;font-weight:700}
+  .sub{color:#c7d2e3;font-size:14px;max-width:760px}
+  .sub b{color:#fff}
+  h2.section{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);
+       border-bottom:2px solid var(--gold);padding-bottom:6px;margin:30px 0 14px;font-weight:700}
+  .grid{display:grid;gap:16px}
+  .cols-4{grid-template-columns:repeat(4,1fr)}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  .cols-2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:860px){.cols-4,.cols-3,.cols-2{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.cols-4,.cols-3,.cols-2{grid-template-columns:1fr}}
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }   /* render all colours, backgrounds & borders */
+    body { background:#fff; font-size:10.5px; }
+    .wrap { max-width:100% !important; padding:0 !important; }
+    .btnrow, .backbtn { display:none !important; }
+    .card { break-inside:avoid; box-shadow:none !important; border:1px solid #999; margin-bottom:8px; }
+    .kv, details.assump { break-inside:avoid; }
+    table { break-inside:avoid; min-width:0 !important; }
+    th, td { border:1px solid #c4c4c4 !important; }   /* full gridlines so each split row is easy to trace */
+    h2.section { break-after:avoid; }
+    input::placeholder, textarea::placeholder { color:transparent !important; }   /* hide placeholder text on empty fields */
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 16px 4px;
+        box-shadow:0 1px 2px rgba(15,37,64,.04)}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--navy);display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .dot.exit{background:#d98324}.dot.stay{background:#2d6cdf}.dot.prop{background:var(--gold)}.dot.next{background:#7a3fb0}
+  label{display:block;font-size:12.5px;color:var(--muted);margin:8px 0 4px;font-weight:600}
+  input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;
+        background:#fff;color:var(--ink);font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,162,74,.15)}
+  input::placeholder{color:#9aa6b8;font-style:italic}
+  .hint{font-size:11px;color:var(--muted);margin:3px 0 0}
+  .row-mini{display:flex;gap:8px}
+  .genderpick{display:flex;gap:8px;margin:4px 0 2px}
+  .gbtn{flex:1;padding:9px 0;border-radius:8px;border:2px solid var(--line);background:#fff;color:var(--muted);
+        font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;transition:all .12s}
+  .gbtn.male:hover{border-color:#3b82f6;color:#3b82f6}
+  .gbtn.female:hover{border-color:#ec4899;color:#ec4899}
+  .gbtn.male.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+  .gbtn.female.active{background:#ec4899;border-color:#ec4899;color:#fff}
+  details.assump{margin-top:14px;background:#fff;border:1px dashed var(--line);border-radius:10px;padding:6px 14px}
+  details.assump summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);padding:8px 0}
+  .cpfhdr{font-weight:700;font-size:11px;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px}
+  .pinkbox{background:#fdecee;border:1px solid #f3b6c0;color:#a01b38;border-radius:8px;padding:10px 12px;margin:8px 0 0;font-size:12.5px;font-weight:600;line-height:1.5}
+  .onwardpanel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px 16px;margin-top:18px}
+  .onwardpanel .card{background:#faf7fe;border-color:#ebe2f8}
+  .card.sengie{background:#faf7fe;border-color:#ebe2f8}
+  #view-partshare .card{margin-bottom:16px}
+  #view-partshare .grid{margin-bottom:4px}
+  .info{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--muted);color:#fff;font-size:10px;font-weight:700;font-style:italic;cursor:pointer;margin-left:6px;position:relative;vertical-align:middle;user-select:none}
+  .info .tip{display:none;position:absolute;left:0;bottom:150%;background:var(--navy);color:#fff;font-size:11px;font-weight:400;font-style:normal;line-height:1.5;padding:8px 10px;border-radius:8px;width:240px;z-index:50;box-shadow:0 4px 14px rgba(0,0,0,.25);text-align:left}
+  .info:hover .tip,.info.open .tip{display:block}
+  .tlgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:stretch}
+  .tlcard{font-size:11.5px;line-height:1.45;border-radius:8px;padding:8px 10px;border:1px solid var(--line);background:#fff}
+  .tlcard .tt{font-weight:700;font-size:12px;margin-bottom:3px}
+  .tlcard.dec{background:#fdecec;border:1px solid #f3c2c2;border-left:4px solid #c0392b}
+  .tlcard.onw{background:#efe7fb;border:1px solid #d9c8f4;border-left:4px solid #6938c4}
+  .tlcard.empty{background:transparent;border:none}
+  .tlaxis{display:grid;grid-template-columns:repeat(5,1fr);position:relative;margin:12px 0}
+  .tlaxis:before{content:'';position:absolute;left:10%;right:10%;top:7px;height:3px;background:var(--navy);border-radius:2px}
+  .tlpt{display:flex;flex-direction:column;align-items:center;position:relative;z-index:1}
+  .tldot{width:16px;height:16px;border-radius:50%;background:var(--navy);border:3px solid #fff;box-shadow:0 0 0 1px var(--navy)}
+  .tldot.dec{background:#c0392b;box-shadow:0 0 0 1px #c0392b}
+  .tldot.onw{background:#6938c4;box-shadow:0 0 0 1px #6938c4}
+  .tldate{font-weight:700;font-size:12px;color:var(--navy);margin-top:6px}
+  @media(max-width:760px){.tlgrid,.tlaxis{grid-template-columns:1fr 1fr}}
+  .kvhi{display:flex;justify-content:space-between;align-items:center;background:#eef2fb;border:1px solid #d6e0f5;border-radius:8px;padding:9px 12px;margin:7px 0;font-size:13.5px}
+  .kvhi .k{color:var(--navy)} .kvhi .v{font-weight:800;color:var(--navy)} .kvhi .v.neg{color:var(--bad)}
+  .cpfbreak{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:6px 0 10px}
+  .cpfbreak .kv{font-size:13px;padding:6px 0}
+  .cpfbreak .kv.sub .k{padding-left:14px;font-size:12px}
+  .cpfbreak .kv.tot{border-top:2px solid var(--line);border-bottom:none;margin-top:2px}
+  .cpfbreak .kv.tot .v{color:var(--navy)}
+  .btnrow{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0 6px}
+  button.calc{background:#b3122a;color:#fff;border:none;padding:13px 26px;border-radius:9px;font-size:15px;
+        font-weight:700;cursor:pointer;letter-spacing:.3px}
+  button.calc:hover{background:#8f0e21}
+  button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line);padding:13px 20px;border-radius:9px;
+        font-weight:600;cursor:pointer}
+  /* results */
+  #results{display:none;margin-top:8px}
+  .reco{border-radius:14px;padding:20px 22px;margin:6px 0 20px;border:1px solid #eedcb6;background:var(--warnbg);
+        box-shadow:0 4px 18px rgba(15,37,64,.07)}
+  .reco .tag{font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--gold)}
+  .reco h2{margin:6px 0 4px;font-size:30px;color:var(--navy)}
+  .reco h2 span{font-size:16px;color:var(--muted);font-weight:600}
+  .reco p{margin:6px 0 0;color:var(--ink);font-size:14.5px}
+  .reco.bad{background:var(--badbg);border-color:#f0c6c0}
+  .reco.bad h2{color:var(--bad)}
+  .reco.warn{background:var(--warnbg);border-color:#eedcb6}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:720px;font-size:13.5px}
+  th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:#fff}
+  thead th{background:var(--navy);color:#fff;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;
+        border-bottom:none;position:sticky;top:0}
+  thead th:first-child{background:var(--navy)}
+  #newLaunchCard thead th{background:#6938c4}   /* new launch = vibrant purple */
+  #ocrCard thead th{background:#0d9488}          /* resale = vibrant teal */
+  tbody tr.best td{background:var(--goodbg)}
+  tbody tr.best td:first-child{background:#d7eede;font-weight:700}
+  tbody tr.infeasible td{color:#9aa3b2}
+  tbody tr{cursor:pointer}
+  tbody tr:hover td{background:#eef2f8}
+  tbody tr.selected td{border-top:2px solid var(--navy);border-bottom:2px solid var(--navy)}
+  tbody tr.selected td:first-child{border-left:2px solid var(--navy);font-weight:700}
+  tbody tr.selected td:last-child{border-right:2px solid var(--navy)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700}
+  .pill.ok{background:var(--goodbg);color:var(--good)}
+  .pill.no{background:var(--badbg);color:var(--bad)}
+  .pill.recpill{background:var(--navy);color:#fff;margin-left:6px;font-size:10px;letter-spacing:1px}
+  .legend{font-size:12px;color:var(--muted);margin:10px 2px 0}
+  .detailgrid{margin-top:20px}
+  .kv{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 0;font-size:13.5px}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--muted)}
+  .kv .v{font-weight:700}
+  .v.neg{color:var(--bad)}
+  .note{font-size:12.5px;color:var(--muted);background:#fff;border-left:3px solid var(--gold);
+        padding:10px 14px;border-radius:0 8px 8px 0;margin:8px 0}
+  .disc{font-size:11.5px;color:var(--muted);margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+  .foot{font-size:12px;color:var(--muted);text-align:center;margin-top:30px}
+  .foot b{color:var(--navy)}
+  .vlabel{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin:26px 0 12px}
+  .toolgrid{gap:18px}
+  .toolcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(15,37,64,.06);cursor:pointer;transition:box-shadow .15s,transform .15s}
+  .toolcard:hover{box-shadow:0 6px 18px rgba(15,37,64,.12);transform:translateY(-2px)}
+  .toolcard h3{margin:12px 0 8px;font-size:18px;color:var(--navy)}
+  .toolcard p{font-size:13.5px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+  .tlist{margin:0 0 16px;padding-left:18px;font-size:12.5px;color:var(--ink);line-height:1.6}
+  .tlist li{margin:3px 0}
+  .homeintro{text-align:center;color:var(--muted);font-size:14.5px;max-width:680px;margin:0 auto 20px;line-height:1.55}
+  .hometitle{text-align:center;font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-.3px;margin:24px 0 6px}
+  .homefoot{text-align:center;font-size:12.5px;color:var(--muted);margin:26px 0 0}
+  .homefoot b{color:var(--navy)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;border-radius:999px}
+  .tag.pre{background:#e7f0ff;color:#2d6cdf}
+  .tag.post{background:#f3e8ff;color:#7a3fb0}
+  .backbtn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;margin:18px 0 6px}
+  .backbtn:hover{background:#f3f4f6}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brandrow"><span class="badge">Decoupling Toolkit</span></div>
+    <h1 id="pageTitle">Decoupling Advisory</h1>
+    <p class="sub" id="pageSub">Two tools in one — <b>pre-advisory</b> to plan the ownership split before you commit, and <b>post-advisory</b> for the actual part-share purchase.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ HOME / LANDING ============ -->
+  <div id="view-home" class="view">
+    <div class="hometitle">Decoupling Toolkit</div>
+    <p class="homeintro">Two purpose-built tools for Singapore private-property decoupling — plan the smartest ownership split, then execute the part-share purchase and time your next home.</p>
+    <div class="grid cols-2 toolgrid">
+      <div class="toolcard" onclick="showView('structuring')">
+        <span class="tag pre">Pre-Advisory</span>
+        <h3>Decoupling Structuring Calculator</h3>
+        <p>Decide the ownership split <b>before</b> you commit — the smallest split that works for both parties, with the cash outlay at every option.</p>
+        <ul class="tlist"><li>Recommended split</li><li>Stamp duty, CPF refund &amp; loan check</li><li>What each party can buy next</li></ul>
+        <button class="calc" type="button">Open tool →</button>
+      </div>
+      <div class="toolcard" onclick="showView('partshare')">
+        <span class="tag post">Post-Advisory</span>
+        <h3>Decoupling / Part-Share Purchase</h3>
+        <p>Once the split is set, run the actual transaction end-to-end — buyout, stamp duty, the new restructured loan and completion.</p>
+        <ul class="tlist"><li>Full buyout &amp; seller proceeds</li><li>New loan + required income</li><li>Decoupling + onward-purchase timeline</li></ul>
+        <button class="calc" type="button">Open tool →</button>
+      </div>
+    </div>
+    <p class="homefoot">Market figures auto-refresh from URA.</p>
+  </div>
+
+  <!-- ============ TOOL 1 · STRUCTURING (PRE-ADVISORY) ============ -->
+  <div id="view-structuring" class="view" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <button class="backbtn" type="button" onclick="showView('home')">← Back to menu</button>
+    <button class="backbtn" type="button" onclick="resetAll()">↺ Reset All</button>
+  </div>
+
+  <!-- ================= INPUTS ================= -->
+  <h2 class="section">1 · The Property (Estimated, at Decoupling)</h2>
+  <p style="font-size:12px;color:#b9791a;margin:0 0 12px;font-style:italic">All figures below are <b>estimated/projected as at the planned decoupling date</b> (e.g. in 4 years' time) — value, outstanding loan and interest rate are forward assumptions, not today's.</p>
+  <div class="grid cols-4">
+    <div class="card" style="grid-column:1/-1">
+      <h3><span class="dot prop"></span>Property Snapshot</h3>
+      <div class="grid cols-4">
+        <div><label>Years Held Before Decoupling</label><input id="holdYears" type="number" placeholder="e.g. 4" step="0.5" oninput="refreshOA()"><p class="hint">SSD applies if sold within 4 yrs; none once held 4+ yrs (4-yr rule from 4 Jul 2025)</p><p class="hint" style="color:var(--warn);font-weight:600">Enter this first — the estimators use it.</p></div>
+        <div><label>Estimated Value at Decoupling ($)</label><input id="propVal" type="number" placeholder="e.g. 1,800,000">
+          <details class="assump" id="valDetails" style="margin-top:6px;background:#f3f4f6">
+            <summary>Estimate future value</summary>
+            <div style="padding:4px 0 10px">
+              <label>Property Type</label>
+              <select id="valType" onchange="valTypeUI()">
+                <option value="resale" selected>Resale</option>
+                <option value="newlaunch">New Launch</option>
+              </select>
+              <label>Purchase Price ($)</label><input id="valPrice" type="number" placeholder="e.g. 1,500,000" oninput="syncLoanOrig();costsAtPurchase()">
+              <label>Projected Growth — CAGR (% / yr)</label><input id="valCAGR" type="number" value="3.5" step="0.1"><p class="hint">Auto-set by property type (New Launch 5%, Resale 3.5%) — editable.</p>
+              <p class="hint">Grown over the "Years Held Before Decoupling" you entered.</p>
+              <button class="ghost" style="padding:9px 16px;font-size:13px;margin-top:6px" onclick="estValue()">Compute &amp; Fill Above ↑</button>
+              <p class="hint" id="valEstOut" style="margin-top:8px"></p>
+            </div>
+          </details>
+        </div>
+        <div><label>Outstanding Loan at Decoupling ($)</label><input id="propLoan" type="number" placeholder="e.g. 980,000">
+          <details class="assump" id="loanDetails" style="margin-top:6px;background:#f3f4f6">
+            <summary>Estimate the outstanding loan</summary>
+            <div style="padding:4px 0 10px">
+              <label>How the Property Was Bought</label>
+              <select id="loanMode" onchange="loanModeUI()">
+                <option value="resale" selected>Resale / completed — repaid from purchase</option>
+                <option value="progressive">New launch (BUC) — repaid from TOP</option>
+              </select>
+              <label>Loan Amount (% of Purchase Price)</label><input id="loanPct" type="number" value="75" step="1" oninput="syncLoanOrig();costsAtPurchase()">
+              <label>Original Loan Amount at Purchase ($)</label><input id="loanOrig" type="number" placeholder="e.g. 1,200,000"><p class="hint">Auto-filled from the purchase price (above) × loan % — editable.</p>
+              <label>Original Loan Tenure (Years)</label><input id="loanTenureYrs" type="number" value="30" step="1">
+              <label>Loan Interest Rate (% p.a.)</label><input id="loanRate" type="number" value="2" step="0.1">
+              <div id="loanProgRow" style="display:none">
+                <label>Construction Phase (Years to TOP)</label>
+                <select id="loanPhase"><option value="3">3 years</option><option value="4" selected>4 years</option><option value="5">5 years</option></select>
+                <p class="hint">For a new launch, principal repayment only starts after TOP — during construction it is interest-servicing, so the loan barely reduces.</p>
+              </div>
+              <p class="hint">Uses the "Years Held Before Decoupling" you entered as the total years since purchase.</p>
+              <button class="ghost" style="padding:9px 16px;font-size:13px;margin-top:6px" onclick="estLoan()">Compute &amp; Fill Above ↑</button>
+              <p class="hint" id="loanEstOut" style="margin-top:8px"></p>
+            </div>
+          </details>
+        </div>
+        <div><label>Purchase Date Regime</label>
+          <select id="ssdRegime">
+            <option value="new" selected>On/after 4 Jul 2025 — 4-yr SSD</option>
+            <option value="old">11 Mar 2017 – 3 Jul 2025 — 3-yr SSD</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section">2 · Exiting Party <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)">— the one who leaves &amp; buys the next property</span></h2>
+  <p style="font-size:12px;color:#b9791a;margin:0 0 12px;font-style:italic">Income &amp; liquidity below are <b>projected/assumed figures as at the planned decoupling date</b> (e.g. in 4 years' time) — not today's.</p>
+  <div class="grid cols-3">
+    <div class="card">
+      <h3><span class="dot exit"></span>Profile</h3>
+      <label>Name</label><input id="exName" type="text" placeholder="Name" onchange="guessSet('ex')">
+      <label>Gender</label>
+      <div class="genderpick" id="exGenderPick">
+        <button type="button" class="gbtn male active" data-g="m" onclick="setGender('ex','m')">Male</button>
+        <button type="button" class="gbtn female" data-g="f" onclick="setGender('ex','f')">Female</button>
+      </div>
+      <input type="hidden" id="exGender" value="m">
+      <label>Residency</label>
+      <select id="exCitizen"><option value="citizen" selected>Singapore Citizen</option><option value="pr">PR</option><option value="foreigner">Foreigner</option></select>
+      <label>Age at Decoupling</label><input id="exAge" type="number" placeholder="Indicate age at decoupling" oninput="refreshOA()">    </div>
+    <div class="card">
+      <h3><span class="dot exit"></span>Income</h3>
+      <label>Gross Monthly Income ($)</label><input id="exIncome" type="number" placeholder="e.g. 8,000" oninput="refreshOA()">
+      <label>Monthly Debt Commitments ($)</label><input id="exDebt" type="number" placeholder="e.g. 500"><p class="hint">Car, personal loans, etc.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot exit"></span>Liquidity</h3>
+      <label>Cash Savings ($)</label><input id="exCash" type="number" placeholder="e.g. 150,000">
+      <label>CPF Available ($)</label><input id="exCpf" type="number" placeholder="e.g. 100,000">
+      <label>Exiting Party's CPF + Accrued Interest Used (Full Sum to Refund)</label><input id="exCpfRefund100" type="number" placeholder="e.g. 200,000"><p class="hint">The exiting party's actual CPF principal + accrued interest. This must be refunded <b>in full regardless of the % they hold</b>. Enter directly, or estimate it below.</p>
+      <details class="assump" style="margin-top:6px;background:#f3f4f6">
+        <summary>Estimate CPF + Accrued Interest (2.5% p.a.)</summary>
+        <div style="padding:4px 0 10px">
+          <label>How the Property Was Bought</label>
+          <select id="cpfMode" onchange="cpfModeUI()">
+            <option value="resale" selected>Resale / completed — full instalment from day one</option>
+            <option value="progressive">New launch (BUC) — progressive payment</option>
+          </select>
+          <div id="cpfProgTop" style="display:none">
+            <div class="cpfhdr">① At purchase</div>
+            <p class="hint" id="cpfPullNote" style="margin:0 0 6px">Purchase price, loan amount and construction phase are <b>pulled from Section 1 (Property Snapshot)</b> — no need to re-enter.</p>
+            <div class="cpfbreak">
+              <div class="kv"><span class="k">Downpayment (<span id="bdDownPct">25</span>% of price)</span><span class="v" id="bdDown">$0</span></div>
+              <div class="kv sub"><span class="k">— 5% booking fee (cash)</span><span class="v" id="bdCash">$0</span></div>
+              <div class="kv sub"><span class="k">— remainder (cash / CPF)</span><span class="v" id="bdCpfDp">$0</span></div>
+              <div class="kv"><span class="k">Buyer's Stamp Duty (BSD)</span><span class="v" id="bdBsd">$0</span></div>
+              <label style="margin-top:6px">Legal &amp; Conveyancing Fee ($)</label><input id="bdLegal" type="number" value="3000" step="100" oninput="costsAtPurchase()">
+              <div class="kv tot"><span class="k">Total upfront (before mortgage)</span><span class="v" id="bdTotal">$0</span></div>
+              <div class="kv"><span class="k">Maximum usable by CPF <span style="font-weight:400">(5% booking must be cash)</span></span><span class="v" id="bdMaxCpf">$0</span></div>
+              <label style="margin-top:8px">Exiting Party's CPF Used at Purchase — set by</label>
+              <select id="bdMode" onchange="bdModeUI();costsAtPurchase()">
+                <option value="pct" selected>% share of purchase cost</option>
+                <option value="manual">Enter CPF amount directly</option>
+              </select>
+              <div id="bdPctRow">
+                <label>Exiting Party's Share of Purchase Cost (%)</label><input id="bdShare" type="number" value="50" step="1" oninput="costsAtPurchase()"><p class="hint">Their actual ownership share — often below 50%. Assumes the 5% booking is cash; the remaining downpayment + BSD + legal go via CPF.</p>
+              </div>
+              <div id="bdManualRow" style="display:none">
+                <label>Exiting Party's CPF Used at Purchase ($)</label><input id="bdManual" type="number" placeholder="e.g. 150,000" oninput="costsAtPurchase()"><p class="hint">Key the actual figure from their CPF Property Withdrawal statement.</p>
+              </div>
+              <div class="kv tot" id="bdExCpfRow"><span class="k">≈ Exiting party's CPF used at purchase</span><span class="v" id="bdExCpf">$0</span></div>
+              <p class="hint" style="margin-top:4px">ABSD is not included — add it to the field below if this was a 2nd+ property.</p>
+              <button class="ghost" style="padding:8px 14px;font-size:13px;margin-top:4px" onclick="useCostsCpf()">Use this figure for CPF used at purchase ↓</button>
+            </div>
+          </div>
+          <label>Exiting Party's CPF Used at Purchase (Downpayment + Stamp Duty)</label><input id="cpfLump" type="number" placeholder="e.g. 150,000"><p class="hint">CPF deployed up front — the downpayment is paid early (booking, exercise, foundation) plus BSD. Grows at 2.5% p.a. from purchase.</p>
+          <div id="cpfProgMid" style="display:none">
+            <div class="cpfhdr">② During construction (to TOP)</div>
+            <label>Construction Floating Interest Rate (% p.a.)</label><input id="cpfConstrRate" type="number" value="1.5" step="0.1"><p class="hint">Promo / floating rate during the build (default 1.5%) — sizes the progressive-payment interest the exiting party part-funds. Construction phase (years to TOP) is taken from Section 1.</p>
+            <label>Exiting Party's Share of the Mortgage Paid (%)</label><input id="cpfShare" type="number" value="50" step="1"><p class="hint">How much of the monthly mortgage the exiting party's CPF covers. Default 50% (equal split) — set to their ownership % if they pay proportionally.</p>
+          </div>
+          <div id="cpfResaleMonthly">
+            <label id="cpfMonthlyLbl">Exiting Party's Monthly CPF Toward the Mortgage</label><input id="cpfMonthly" type="number" placeholder="e.g. 1,500">
+          </div>
+          <div id="cpfProgBottom" style="display:none">
+            <div class="cpfhdr">③ After TOP (to decoupling)</div>
+            <label>Avg Monthly Income While Paying the Loan ($)</label><input id="cpfIncome" type="number" placeholder="defaults to income in Section 2" oninput="refreshOA()"><p class="hint">The exiting party's <b>average salary during the holding years</b> — usually lower than the projected decoupling-year income in Section 2. Drives the CPF-OA put toward the mortgage. Blank = uses Section 2 income.</p>
+            <div class="kv" style="padding:8px 0"><span class="k">Exiting Party's Monthly CPF (OA) — Used From TOP Onwards</span><span class="v" id="cpfOAout">$0/mo</span></div>
+            <p class="hint" id="cpfOAnote" style="margin-top:0">Auto-computed from <span class="exname">the exiting party</span>'s age &amp; income.</p>
+            <label>Interest Rate From TOP Onwards (% p.a.)</label><input id="cpfPostRate" type="number" value="2" step="0.1"><p class="hint">The mortgage rate once the unit is completed — used to size the full instalment <span class="exname">the exiting party</span>'s CPF contribution goes toward.</p>
+          </div>
+          <p class="hint" style="margin-top:10px">Uses the "years held before decoupling" above as the accrual period (construction + post-TOP).</p>
+          <button class="ghost" style="padding:9px 16px;font-size:13px;margin-top:6px" onclick="estCpf()">Compute &amp; Fill Above ↑</button>
+          <p class="hint" id="cpfEstOut" style="margin-top:8px"></p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <h2 class="section">3 · Staying Party <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)">— keeps the property &amp; takes over the full loan</span></h2>
+  <p style="font-size:12px;color:#b9791a;margin:0 0 12px;font-style:italic">Income &amp; liquidity below are <b>projected/assumed figures as at the planned decoupling date</b> (e.g. in 4 years' time) — not today's.</p>
+  <div class="grid cols-3">
+    <div class="card">
+      <h3><span class="dot stay"></span>Profile</h3>
+      <label>Name</label><input id="stName" type="text" placeholder="Name" onchange="guessSet('st')">
+      <label>Gender</label>
+      <div class="genderpick" id="stGenderPick">
+        <button type="button" class="gbtn male active" data-g="m" onclick="setGender('st','m')">Male</button>
+        <button type="button" class="gbtn female" data-g="f" onclick="setGender('st','f')">Female</button>
+      </div>
+      <input type="hidden" id="stGender" value="m">
+      <label>Residency</label>
+      <select id="stCitizen"><option value="citizen" selected>Singapore Citizen</option><option value="pr">PR</option><option value="foreigner">Foreigner</option></select>
+      <label>Age at Decoupling</label><input id="stAge" type="number" placeholder="Indicate age at decoupling" oninput="syncTenure()">    </div>
+    <div class="card">
+      <h3><span class="dot stay"></span>Income</h3>
+      <label>Gross Monthly Income ($)</label><input id="stIncome" type="number" placeholder="e.g. 13,000">
+      <label>Monthly Debt Commitments ($)</label><input id="stDebt" type="number" placeholder="e.g. 0">
+    </div>
+    <div class="card">
+      <h3><span class="dot stay"></span>Liquidity (for Buyout)</h3>
+      <label>Cash Savings ($)</label><input id="stCash" type="number" placeholder="e.g. 120,000">
+      <label>CPF Available ($)</label><input id="stCpf" type="number" placeholder="e.g. 170,000">
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3><span class="dot stay"></span>New Restructured Loan Tenure (Staying Party)</h3>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <input id="stTenure" type="range" min="5" max="30" value="30" step="1" style="flex:1;min-width:180px;accent-color:var(--navy)" oninput="tenureInput(this.value)">
+      <input id="stTenureNum" type="number" min="5" max="30" value="30" style="width:90px" oninput="tenureInput(this.value)">
+      <span style="color:var(--muted);font-size:13px">years</span>
+    </div>
+    <p class="hint">Defaults to the years the staying party has to age 65 (65 − age, capped at 30) — the max for 75% LTV. Drag to override (e.g. a shorter 10 or 20-yr loan). Longer tenure = lower monthly instalment &amp; higher eligibility, but more total interest.</p>
+    <label style="margin-top:10px">Staying Party's Mortgage Rate (% p.a.)</label>
+    <input id="actualRate" type="number" value="2" step="0.1" style="max-width:160px">
+    <p class="hint">The interest rate used to calculate the staying party's monthly mortgage repayment on the restructured loan.</p>
+  </div>
+
+  <details class="assump">
+    <summary>Advanced Assumptions (Tap to Adjust)</summary>
+    <div class="grid cols-4" style="padding:6px 0 12px">
+      <div><label style="min-height:3em">Legal / Conveyancing per Party — Decoupling ($)</label><input id="legal" type="number" value="3000"><p class="hint">≈ $3,000 each side (≈ $6,000 total for the decoupling)</p></div>
+      <div><label style="min-height:3em">TDSR Stress-Test Rate (% p.a.)</label><input id="stress" type="number" value="4" step="0.1"></div>
+      <div><label style="min-height:3em">TDSR Ceiling (%)</label><input id="tdsr" type="number" value="55"></div>
+      <div><label style="min-height:3em">Min Cash Down-Payment (% of Price)</label><input id="minCash" type="number" value="5"></div>
+      <div><label>Part-Purchase Loan (% of Share Bought)</label><input id="partLoanPct" type="number" value="75"><p class="hint">Financing on the buyout — 75% standard</p></div>
+    </div>
+  </details>
+
+  <div class="btnrow">
+    <button class="calc" onclick="run()">Calculate &amp; Recommend Split</button>
+  </div>
+
+  <!-- ================= RESULTS ================= -->
+  <div id="results">
+    <div id="reco"></div>
+
+    <h2 class="section">Cash Outlay &amp; Feasibility by Split</h2>
+    <p class="legend" style="margin:0 0 10px"><b>Tip:</b> click any row to load its full breakdown in the sections below. The recommended split loads by default.</p>
+    <div class="tablewrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>Split&nbsp;(Stay&nbsp;/&nbsp;Exit)</th>
+            <th>BSD on Buyout</th>
+            <th>SSD (Exit Pays)</th>
+            <th>Staying Upfront<br>Cash + CPF</th>
+            <th>Staying<br>Can Fund?</th>
+            <th>Exiting Cash<br>Proceeds</th>
+            <th>Exiting<br>Budget</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <p class="legend"><b>Staying upfront cash + CPF</b> = downpayment + BSD + ABSD + legal. <b>Exiting cash proceeds</b> = share value − loan share − SSD − legal − full CPF refund (negative = must top up cash to refund CPF). <b>Exiting budget</b> = max price <span class="exname">the exiting party</span> can afford from cash + CPF + loan + the staying party's leftover cash savings, after stamp duty &amp; legal. Highlighted row = recommended split; click any other row to see why it is not the pick.</p>
+
+    <div id="compareNote" style="margin-top:14px"></div>
+
+    <div class="card" id="stayMinCard" style="margin-top:20px;padding-bottom:16px"></div>
+
+    <div class="card" id="affordCard" style="margin-top:20px;padding-bottom:16px"></div>
+
+    <div style="margin:26px 0 0">
+      <h3 style="margin:0 0 4px;font-size:15px;color:var(--navy)"><span class="dot next" style="margin-right:8px"></span>Price Reference — What <span class="exname">the exiting party</span> Could Buy Next</h3>
+      <p class="hint" style="margin:0">Each box below takes today's URA transacted prices and projects them forward to the decoupling date — using its own yearly growth rate (CAGR) and number of years. New launches usually rise faster than resale during the build-up to completion (TOP).</p>
+    </div>
+
+    <div class="card" id="newLaunchCard" style="margin-top:20px;padding-bottom:16px">
+      <h3><span class="dot" style="background:#6938c4"></span>New Launch — by Region &amp; Bedroom</h3>
+      <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin:2px 0 6px">
+        <div><label>New Launch CAGR (% / yr)</label><input id="projCAGRnew" type="number" value="5" step="0.1" oninput="reproject()" style="max-width:140px"></div>
+        <div><label>Years to Decoupling</label><input id="projYearsNew" type="number" value="4" step="0.5" oninput="reproject()" style="max-width:140px"></div>
+      </div>
+      <div id="newLaunchBody"></div>
+    </div>
+
+    <div class="card" id="ocrCard" style="margin-top:20px;padding-bottom:16px">
+      <h3><span class="dot" style="background:#0d9488"></span>Resale — by Region &amp; Bedroom</h3>
+      <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin:2px 0 6px">
+        <div><label>Resale CAGR (% / yr)</label><input id="projCAGRresale" type="number" value="3.5" step="0.1" oninput="reproject()" style="max-width:140px"></div>
+        <div><label>Years to Decoupling</label><input id="projYearsResale" type="number" value="4" step="0.5" oninput="reproject()" style="max-width:140px"></div>
+      </div>
+      <div id="ocrBody"></div>
+    </div>
+
+    <div class="card" id="intentCard" style="margin-top:20px;padding-bottom:16px">
+      <h3><span class="dot next"></span>Optional — Test a Specific Property <span class="exname">the exiting party</span> Intends to Buy</h3>
+      <label>Intended Next Property Price ($)</label>
+      <input id="intendedPrice" type="number" placeholder="e.g. 1,500,000" oninput="updateIntent()">
+      <p class="hint">Enter a price and the tool works out the cash top-up shortfall against <span class="exname">the exiting party</span>'s proceeds, CPF and loan. Leave blank to just use the budget above.</p>
+      <div id="intentResult" style="margin-top:8px"></div>
+    </div>
+
+    <div id="advisory"></div>
+  </div>
+
+  <div class="disc">
+    <b>Assumptions &amp; limits.</b> Figures are planning estimates, not a bank or IRAS assessment. Rates current as at Jun 2026: BSD up to 6%; ABSD — Citizen 0/20/30%, PR 5/30/35%, Foreigner 60%; SSD — 16/12/8/4% over 4 yrs (purchases from 4 Jul 2025) or 12/8/4% over 3 yrs (11 Mar 2017–3 Jul 2025); TDSR 55%; stress-test floor 4%; LTV 75% (1st housing loan, tenure ≤30 yrs &amp; age+tenure ≤65). <b>Decoupling applies to private property only</b> — HDB part-share transfers between spouses were stopped in Apr 2016. Equity is shared in proportion to legal share. The exiting party's CPF + accrued interest is treated as a fixed sum refunded in full regardless of the share held — it returns to their CPF (usable for the next purchase); any shortfall versus their equity is topped up in cash. Confirm exact figures with a conveyancing lawyer, mortgage banker and IRAS before committing. Not financial, tax or legal advice.
+  </div>
+  <div class="btnrow" style="justify-content:center;margin-top:24px">
+    <button class="ghost" onclick="window.print()">Print / Save PDF</button>
+    <button class="ghost" onclick="resetAll()">Reset All</button>
+  </div>
+  </div><!-- /view-structuring -->
+
+  <!-- ============ TOOL 2 · PART-SHARE PURCHASE (POST-ADVISORY) ============ -->
+  <div id="view-partshare" class="view" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button class="backbtn" type="button" onclick="showView('home')">← Back to menu</button>
+      <button class="backbtn" type="button" onclick="resetAll()">↺ Reset All</button>
+    </div>
+    <h2 class="section">Decoupling / Part-Share Purchase <span class="tag post" style="vertical-align:middle">Post-Advisory</span></h2>
+    <p style="font-size:12px;color:#b9791a;margin:0 0 12px;font-style:italic">The split is decided — enter today's actual figures. CPF + accrued interest comes straight from the CPF website; SSD is picked directly (no years-held needed). Figures update live as you type.</p>
+
+    <div class="card">
+      <h3><span class="dot prop"></span>Joint Ownership Details</h3>
+      <div class="grid cols-3">
+        <div><label>Property Name / Address</label><input id="psAddr" type="text" placeholder="Property Name / Address"></div>
+        <div><label>Property Valuation ($)</label><input id="psVal" type="number" placeholder="e.g. 2,000,000" oninput="psCompute()"></div>
+        <div><label>Existing Loan ($)</label><input id="psLoan" type="number" placeholder="e.g. 900,000" oninput="psCompute()"></div>
+      </div>
+      <label>Number of Joint Owners</label>
+      <select id="psOwners" onchange="psSyncShare('st');psCompute()" style="max-width:220px"><option value="2" selected>2</option><option value="3">3</option></select>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h3 id="psStHdr1"><span class="dot stay"></span>Staying Owner (Buyer)</h3>
+        <label>Name</label><input id="psStName" type="text" placeholder="Example Name" oninput="psCompute()">
+        <label>Existing Share (%)</label><input id="psStShare" type="number" value="50" step="1" oninput="psSyncShare('st');psCompute()">
+        <label>Residency</label>
+        <select id="psStRes" onchange="psCompute()"><option value="citizen" selected>SG Citizen</option><option value="pr">PR</option><option value="foreigner">Foreigner</option><option value="entity">Entity / Trust</option></select>
+        <label>Holding of Properties (after buyout)</label>
+        <select id="psStHold" onchange="psCompute()"><option value="1" selected>1st</option><option value="2">2nd</option><option value="3">3rd</option></select>
+        <div class="kv"><span class="k"><b>Final Share (after buyout)</b></span><span class="v" id="psFinalShare">100 %</span></div>
+      </div>
+      <div class="card sengie">
+        <h3 id="psExHdr1"><span class="dot exit"></span>Exiting Owner (Seller)</h3>
+        <label>Name</label><input id="psExName" type="text" placeholder="Example Name" oninput="psCompute()">
+        <label>Existing Share (%)</label><input id="psExShare" type="number" value="50" step="1" oninput="psSyncShare('ex');psCompute()">
+        <label>CPF Used With Accrued Interest ($)</label><input id="psExCpf" type="number" placeholder="e.g. 250,000" oninput="psCompute()"><p class="hint">Pull the exact figure from the CPF website (Property withdrawal + accrued interest).</p>
+        <label>Cash on Hand ($) <span id="psExCashLbl" style="color:var(--muted);font-weight:400;font-size:11px"></span></label><input id="psExCash" type="number" placeholder="e.g. 150,000" oninput="psCompute()">
+      </div>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h3 id="psStHdr2"><span class="dot stay"></span>Staying Owner (Buyer) — Outlay</h3>
+        <div class="kv"><span class="k" id="psBuyoutLbl">Buying Over Exiting Owner's Property Value</span><span class="v" id="psBuyout">$0</span></div>
+        <div class="grid cols-2" style="margin-top:8px">
+          <div><label>Downpayment (Cash) %</label><input id="psDpCash" type="number" value="5" step="1" oninput="psCompute()"></div>
+          <div><label>Part Purchase Loan %</label><input id="psPartLoan" type="number" value="75" step="1" oninput="psCompute()"></div>
+        </div>
+        <div class="kv"><span class="k">Downpayment in Cash <span id="psDpCashPct" style="color:var(--muted);font-weight:400"></span></span><span class="v" id="psDpCashAmt">$0</span></div>
+        <div class="kv"><span class="k">Balance Downpayment (Cash/CPF) <span id="psBalPct" style="color:var(--muted);font-weight:400"></span></span><span class="v" id="psBalAmt">$0</span></div>
+        <div class="kv"><span class="k">Part Purchase Loan <span id="psPartLoanPctL" style="color:var(--muted);font-weight:400"></span></span><span class="v" id="psPartLoanAmt">$0</span></div>
+        <div class="kv"><span class="k">Buyer's Stamp Duty (BSD)</span><span class="v" id="psBsd">$0</span></div>
+        <div class="kv"><span class="k">Additional Buyer's Stamp Duty <span id="psAbsdPct" style="color:var(--muted);font-weight:400"></span></span><span class="v" id="psAbsd">$0</span></div>
+        <div class="grid cols-2" style="margin-top:8px">
+          <div><label>Legal Fee ($)</label><input id="psStLegal" type="number" value="3000" oninput="psCompute()"></div>
+          <div><label>Others ($)</label><input id="psStOther" type="number" value="0" oninput="psCompute()"></div>
+        </div>
+        <div class="kvhi"><span class="k"><b>Total Downpayment + Expenses</b><span class="info" onclick="this.classList.toggle('open')">i<span class="tip" id="psTipOutlay"></span></span></span><span class="v" id="psTotalOutlay">$0</span></div>
+        <div class="cpfhdr" style="margin-top:14px">Loan Restructuring &amp; Repayment</div>
+        <div class="kv"><span class="k" id="psStExistLoanLbl">Staying Owner's Existing Loan</span><span class="v" id="psStExistLoan">$0</span></div>
+        <div class="kvhi"><span class="k"><b>New Restructured Loan</b><span class="info" onclick="this.classList.toggle('open')">i<span class="tip" id="psTipLoan"></span></span></span><span class="v" id="psNewLoan">$0</span></div>
+        <div class="grid cols-3" style="margin-top:8px">
+          <div><label>Buyer's Age</label><input id="psStAge" type="number" placeholder="e.g. 40" oninput="psSyncTenure();psCompute()"></div>
+          <div><label>Loan Tenure (Yrs)</label><input id="psTenure" type="number" value="30" step="1" oninput="psCompute()"></div>
+          <div><label>Interest (%)</label><input id="psRate" type="number" value="2" step="0.1" oninput="psCompute()"></div>
+        </div>
+        <p class="hint" style="margin-top:2px">Tenure auto-sets from age (max 30 yrs, age + tenure ≤ 65). Override if needed.</p>
+        <div class="kv"><span class="k">Required Min. Income to Qualify <span style="color:var(--muted);font-weight:400">(TDSR @ stress)</span></span><span class="v" id="psReqIncome">$0/mo</span></div>
+        <div class="kvhi"><span class="k"><b>Monthly Instalment (New Loan)</b></span><span class="v" id="psMonthly">$0/mo</span></div>
+      </div>
+      <div class="card sengie">
+        <h3 id="psExHdr2"><span class="dot exit"></span>Exiting Owner (Seller) — Expenses &amp; Proceeds</h3>
+        <label>Seller's Stamp Duty (SSD)</label>
+        <select id="psSsd" onchange="psCompute()"><option value="0" selected>0%</option><option value="4">4%</option><option value="8">8%</option><option value="12">12%</option><option value="16">16%</option></select>
+        <div class="kv"><span class="k">SSD Payable</span><span class="v" id="psSsdPay">$0</span></div>
+        <div class="grid cols-2" style="margin-top:8px">
+          <div><label>Bank's Penalty ($)</label><input id="psPenalty" type="number" value="0" oninput="psCompute()"></div>
+          <div><label>Legal Fee ($)</label><input id="psExLegal" type="number" value="3000" oninput="psCompute()"></div>
+        </div>
+        <label>Others ($)</label><input id="psExOther" type="number" value="0" oninput="psCompute()">
+        <div class="kvhi"><span class="k"><b>Total Expenses</b></span><span class="v" id="psTotalExp">$0</span></div>
+        <div class="cpfhdr" style="margin-top:14px">Sales Proceeds — How It's Derived</div>
+        <div class="kv"><span class="k" id="psShareValLbl">Exiting Owner's Share Value (gross)</span><span class="v" id="psShareVal">$0</span></div>
+        <div class="kv"><span class="k">Less: Total Expenses</span><span class="v">−<span id="psTotalExp2">$0</span></span></div>
+        <div class="kv"><span class="k" id="psExOutLoanLbl">Less: Outstanding Loan (Seller's Share)</span><span class="v" id="psExOutLoan">$0</span></div>
+        <div class="kv"><span class="k">Less: CPF + Accrued Interest (returns to CPF)</span><span class="v" id="psCpfLess">$0</span></div>
+        <div class="kvhi"><span class="k"><b>Sales Proceeds (Cash in Hand)</b><span class="info" onclick="this.classList.toggle('open')">i<span class="tip" id="psTipProceeds"></span></span></span><span class="v" id="psProceeds">$0</span></div>
+        <div class="kv"><span class="k" id="psCpfReturnedLbl">CPF + Accrued Interest returned to CPF-OA</span><span class="v" id="psCpfReturned">$0</span></div>
+        <div id="psProceedsNote" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="onwardpanel">
+    <h3 style="margin:4px 0 8px;font-size:15px;color:var(--navy)"><span class="dot next" style="margin-right:8px"></span><span id="psBudgetHdr">New Purchase — What the Exiting Owner Can Afford</span> <span style="font-weight:500;color:var(--muted);font-size:12px">(today's URA prices; green = within budget)</span></h3>
+    <div class="card">
+      <h3><span class="dot next"></span><span id="psNextHdr">Exiting Owner — Funds &amp; Loan Capacity</span></h3>
+      <div class="grid cols-3">
+        <div><label>Existing CPF-OA Balance ($)</label><input id="psExCpfBal" type="number" placeholder="e.g. 50,000" oninput="psCompute()"></div>
+        <div><label>Gross Monthly Income ($)</label><input id="psExInc" type="number" placeholder="e.g. 8,000" oninput="psCompute()"></div>
+        <div><label>Monthly Debt Obligations ($)</label><input id="psExDebt" type="number" placeholder="e.g. 0" oninput="psCompute()"></div>
+        <div><label>Age</label><input id="psExAge" type="number" placeholder="e.g. 40" oninput="psCompute()"></div>
+        <div><label>Residency</label><select id="psExRes" onchange="psCompute()"><option value="citizen" selected>SG Citizen</option><option value="pr">PR</option><option value="foreigner">Foreigner</option></select></div>
+      </div>
+    </div>
+    <div id="psBudgetOut"></div>
+    </div><!-- /onwardpanel -->
+
+    <div class="card">
+      <h3><span class="dot next"></span>Combined Timeline — Decoupling &amp; Onward Purchase</h3>
+      <div class="grid cols-3">
+        <div><label>Decoupling OTP Date</label><input id="psOTP" type="date"></div>
+        <div><label>Exercise Period (Weeks)</label><input id="psExercise" type="number" value="2" step="1"></div>
+        <div><label>Completion Period (Weeks)</label><input id="psCompletion" type="number" value="12" step="1"></div>
+      </div>
+      <p class="hint" style="margin-top:4px">The onward-purchase dates — earliest to exercise the new OTP and the earliest completion — are worked out automatically from these.</p>
+      <div class="btnrow"><button class="calc" type="button" onclick="psTimeline()">Generate Timeline</button></div>
+      <div id="psTimelineOut"></div>
+    </div>
+  <div class="btnrow" style="justify-content:center;margin-top:24px">
+    <button class="ghost" onclick="window.print()">Print / Save PDF</button>
+    <button class="ghost" onclick="resetAll()">Reset All</button>
+  </div>
+  </div>
+
+  <p class="foot">Decoupling Toolkit · Planning estimates only — confirm figures with your lawyer, banker &amp; IRAS.</p>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let G=null;  // last computed {rows,stay,exit,rec} for click-to-select
+let nextLegal=3000;   // adjustable legal/conveyancing on the EXITING party's NEXT purchase
+let affordOpen=false; // keep the cost-breakdown panel open across re-renders
+/* MATRIX_START — auto-generated by ura_update.py 2026-06-23 */
+const MATRIX={
+  OCR:{"1BR":{p:810000,n:1199},"2BR":{p:1150000,n:1886},"3BR":{p:1520000,n:4494},"4BR":{p:1900000,n:2835}},
+  RCR:{"1BR":{p:918000,n:919},"2BR":{p:1474000,n:1114},"3BR":{p:1904000,n:1657},"4BR":{p:2510000,n:1205}},
+  CCR:{"1BR":{p:1090000,n:344},"2BR":{p:1500000,n:472},"3BR":{p:2230000,n:796},"4BR":{p:3080000,n:712}}
+};
+/* MATRIX_END */
+/* NEWLAUNCH_START — auto-generated by ura_update.py 2026-06-23 */
+const NEWLAUNCH={
+  OCR:{"1BR":{p:1164000,n:378},"2BR":{p:1618000,n:2749},"3BR":{p:1891000,n:4774},"4BR":{p:2723000,n:1752}},
+  RCR:{"1BR":{p:1339000,n:590},"2BR":{p:1912000,n:1943},"3BR":{p:2709000,n:1618},"4BR":{p:3594000,n:982}},
+  CCR:{"1BR":{p:1538000,n:552},"2BR":{p:2133000,n:1076},"3BR":{p:2922000,n:687},"4BR":{p:4215000,n:221}}
+};
+/* NEWLAUNCH_END */
+const n=v=>{v=parseFloat(String(v).replace(/,/g,''));return isNaN(v)?0:v;};
+const fmt=v=>{const s=Math.round(v).toLocaleString('en-SG');return v<0?'-$'+Math.abs(Math.round(v)).toLocaleString('en-SG'):'$'+s;};
+const pct=v=>v+'%';
+
+// ---- BSD (progressive) ----
+function bsd(v){
+  if(v<=0)return 0;
+  const tiers=[[180000,.01],[180000,.02],[640000,.03],[500000,.04],[1500000,.05],[Infinity,.06]];
+  let t=0,rem=v;
+  for(const[band,rate]of tiers){if(rem<=0)break;const x=Math.min(rem,band);t+=x*rate;rem-=x;}
+  return t;
+}
+// ---- ABSD ----
+function absd(price,res,onlyProp){
+  // onlyProp: true => first property after exit
+  if(res==='foreigner')return price*0.60;
+  if(res==='pr')return price*(onlyProp?0.05:0.30);
+  return price*(onlyProp?0:0.20); // citizen
+}
+// ---- SSD on share value ----
+function ssdRate(years,regime){
+  const m=years; // years held before decoupling
+  if(regime==='new'){ if(m<=1)return .16; if(m<=2)return .12; if(m<=3)return .08; if(m<4)return .04; return 0; }  // 4-yr: 16/12/8/4, none once held 4+ yrs
+  if(m<=1)return .12; if(m<=2)return .08; if(m<3)return .04; return 0;                                          // 3-yr: 12/8/4, none once held 3+ yrs
+}
+// ---- loan helpers (monthly) ----
+function regTenure(age){return Math.max(5,Math.min(30,65-age));}            // default for full 75% LTV
+function tenure(age,chosen){return (chosen&&chosen>0)?Math.max(5,Math.min(30,chosen)):regTenure(age);}
+function maxLoanTDSR(income,debt,age,stress,tdsr,chosen){
+  const avail=income*(tdsr/100)-debt; if(avail<=0)return 0;
+  const r=(stress/100)/12, nM=tenure(age,chosen)*12;
+  return avail*(1-Math.pow(1+r,-nM))/r;
+}
+function instalment(loan,age,stress,chosen){
+  const r=(stress/100)/12,nM=tenure(age,chosen)*12;
+  return loan*r/(1-Math.pow(1+r,-nM));
+}
+function annuity(age,rate,chosen){const r=(rate/100)/12,nM=tenure(age,chosen)*12;return (1-Math.pow(1+r,-nM))/r;}
+
+function bsdExplain(v){
+  const tiers=[["1%",180000,.01],["2%",180000,.02],["3%",640000,.03],["4%",500000,.04],["5%",1500000,.05],["6%",Infinity,.06]];
+  let rem=v,parts=[];
+  for(const[label,band,r]of tiers){ if(rem<=0)break; const x=Math.min(rem,band); parts.push(`${label} × ${fmt(x)} = ${fmt(x*r)}`); rem-=x; }
+  return parts.join(' + ');
+}
+function toggleAfford(btn){ affordOpen=!affordOpen; const d=btn.nextElementSibling; d.style.display=affordOpen?'block':'none'; btn.textContent=affordOpen?'Hide cost breakdown ▴':'Break down cost details ▾'; }
+function setNextLegal(v){ nextLegal=n(v); affordOpen=true; run(); }
+function updateIntent(){ if(!G)return; G.exit.intendedPrice=n($('intendedPrice').value); const sel=document.querySelector('#tblBody tr.selected'); const X=sel?parseFloat(sel.dataset.x):((G.rec||G.rows[0]).X); const row=G.rows.find(r=>r.X===X)||G.rows[0]; renderIntent(G.exit,row); }
+function pn(g){ return g==='m' ? {s:'he',S:'He',o:'him',p:'his',P:'His'} : {s:'she',S:'She',o:'her',p:'her',P:'Her'}; }
+const FEMNAMES=new Set('mary jane sarah michelle linda grace joyce emily emma sophia olivia rachel rebecca jessica amanda nicole jennifer karen susan lisa priya aisha fiona angela cynthia diana elaine'.split(' '));
+const MASCNAMES=new Set('peter john david michael james robert william kumar raj ahmad wesley daniel benjamin samuel jason kevin marcus aaron ryan andrew brian gary edwin alvin melvin'.split(' '));
+function guessGender(name){ const f=(name||'').trim().split(/\s+/)[0].toLowerCase(); if(MASCNAMES.has(f))return 'm'; if(FEMNAMES.has(f))return 'f'; return null; }
+function applyGenderUI(who,g){
+  if($(who+'Gender')) $(who+'Gender').value=g;
+  const wrap=$(who+'GenderPick'); if(wrap) wrap.querySelectorAll('.gbtn').forEach(b=>b.classList.toggle('active', b.dataset.g===g));
+}
+function setGender(who,g){ applyGenderUI(who,g); }
+function guessSet(who){ const g=guessGender($(who+'Name').value); if(g) applyGenderUI(who,g); }
+function applyNames(ex,st){
+  document.querySelectorAll('.exname').forEach(e=>e.textContent=ex);
+  document.querySelectorAll('.stname').forEach(e=>e.textContent=st);
+}
+function run(){
+  if(!n($('propVal').value)||!n($('stIncome').value)){
+    alert('Please fill in at least the property value and the staying party’s income to calculate.');
+    return;
+  }
+  const V=n($('propVal').value), L=n($('propLoan').value), E=V-L;
+  const hold=n($('holdYears').value), regime=$('ssdRegime').value;
+  const stress=n($('stress').value), tdsr=n($('tdsr').value), legal=n($('legal').value), minCashPct=n($('minCash').value);
+  let actualRate=n($('actualRate').value); if(actualRate<=0) actualRate=stress;
+  const partLoanPct=n($('partLoanPct').value)||75;
+
+  // exiting
+  const exRes=$('exCitizen').value, exAge=n($('exAge').value), exInc=n($('exIncome').value),
+        exDebt=n($('exDebt').value), exCash=n($('exCash').value), exCpf=n($('exCpf').value);
+  const exCpfR100=n($('exCpfRefund100').value);
+  const nextOnly=true;  // decoupling frees the exiting party to buy as their ONLY property (no ABSD for citizens; PR 5%, foreigner 60% by residency)
+  const intendedPrice=n($('intendedPrice').value);
+  // staying
+  const stRes=$('stCitizen').value, stAge=n($('stAge').value), stInc=n($('stIncome').value),
+        stDebt=n($('stDebt').value), stCash=n($('stCash').value), stCpf=n($('stCpf').value);
+  const stTenure=n($('stTenure').value)||30;
+  const exName=($('exName').value||'').trim()||'Exiting party';
+  const stName=($('stName').value||'').trim()||'Staying party';
+  const exGender=$('exGender')?$('exGender').value:'m', stGender=$('stGender')?$('stGender').value:'m';
+  applyNames(exName,stName);
+
+  const sr=ssdRate(hold,regime);
+
+  // ---- staying party: income capacity (the new restructured loan is computed per split) ----
+  const stMaxLoan=maxLoanTDSR(stInc,stDebt,stAge,stress,tdsr,stTenure);  // max loan their income supports (stressed, chosen tenure)
+  const stLtvCap=0.75*V;                                        // 75% LTV ceiling on the whole property
+  const stLiquidity=stCash+exCash+stCpf;   // married couple: pool BOTH parties' cash + the staying party's CPF (CPF cannot cross between people)
+  const cashKnown=stLiquidity>0;   // if any household liquidity entered, the buyout funding becomes a real gate for the recommendation
+
+  // ---- exiting party: loan capacity (drives the affordable budget, not a target price) ----
+  const exMaxLoanTDSR=maxLoanTDSR(exInc,exDebt,exAge,stress,tdsr);
+
+  const splits=[1,5,10,15,20,25,30,40,50];
+  const rows=splits.map(X=>{
+    const f=X/100;
+    const shareVal=f*V;
+    const bsdBuy=bsd(shareVal);                 // staying pays BSD on the share value
+    const absdBuy=absd(shareVal,stRes,true);  // staying consolidates to sole owner of one property — no ABSD for a citizen
+    const ssd=sr*shareVal;                      // exiting pays SSD
+    const exEquity=f*E;                         // equity in the exiting party's share
+    // --- staying party: part-purchase loan financing of the buyout ---
+    const retainedLoan=L*(1-f);                 // staying party's own share of the existing loan (kept)
+    const desiredNewLoan=retainedLoan+(partLoanPct/100)*shareVal;  // retained + standard part-purchase loan
+    const maxNewLoan=Math.min(stLtvCap,stMaxLoan);                 // capped by 75% LTV and income (TDSR)
+    const newTotalLoan=Math.max(0,Math.min(desiredNewLoan,maxNewLoan));
+    const partLoan=Math.max(0,newTotalLoan-retainedLoan);         // financing actually obtained on the buyout
+    const downpayment=shareVal-partLoan;                          // cash/CPF toward the share
+    const stInstal=instalment(newTotalLoan,stAge,actualRate,stTenure);  // instalment on the new restructured loan (chosen tenure)
+    const loanLimited=desiredNewLoan>maxNewLoan+1;                // income/LTV forced a bigger cash downpayment
+    // staying total upfront cash/CPF = downpayment + BSD + ABSD + legal
+    const stOutlay=downpayment+bsdBuy+absdBuy+legal;
+    const stCanFund=stLiquidity>=stOutlay;
+    // exiting party proceeds, split into cash vs CPF
+    const exNet=exEquity-ssd-legal;          // total proceeds (cash + CPF) from the share
+    const cpfRefund=exCpfR100;               // FULL CPF + accrued interest — refunded regardless of split %
+    const exCashOut=exEquity-cpfRefund-ssd-legal; // cash pocketed; NEGATIVE = must top up cash to refund CPF
+    const borrowedFromEx=Math.max(0,stOutlay-(stCash+stCpf)); // shortfall the staying party covered from the EXITING party's cash (married-couple pool)
+    const exCashAvail=exCash+exCashOut-borrowedFromEx;   // her cash for next purchase, net of what funded the buyout
+    const exCpfAvail=exCpf+cpfRefund;        // CPF for next purchase (CPF cannot be lent between people)
+    const exFunds=exCash+exCpf+exNet-borrowedFromEx;     // total funds for next purchase, net
+    // staying party's leftover CASH after the buyout — can top up the exiting party's next purchase (household, e.g. husband/wife). CPF cannot cross over, only cash.
+    const cash5_=shareVal*(minCashPct/100);
+    const balDP_=Math.max(0,downpayment-cash5_);
+    const stCpfUsed=Math.min(stCpf,balDP_);                       // CPF-eligible 20% balance funded from CPF first
+    const stCashUsed=cash5_+(balDP_-stCpfUsed)+bsdBuy+absdBuy+legal;
+    const stRemainingCash=Math.max(0,stCash-stCashUsed);         // husband/wife leftover cash available to gift
+    // exiting party budget — her own funds, and with the staying party's leftover cash topped up
+    const exBudgetOwn=maxAffordablePrice(exFunds,exCashAvail,exMaxLoanTDSR,exRes,nextOnly,minCashPct,nextLegal);
+    const hhFunds=exFunds+stRemainingCash;                       // household funds: her cash+CPF + staying party's leftover cash
+    const exBudget=maxAffordablePrice(hhFunds,exCashAvail+stRemainingCash,exMaxLoanTDSR,exRes,nextOnly,minCashPct,nextLegal);
+    const exOk = exCashOut>=0;   // walks away cash-positive (full CPF refund covered without topping up)
+    const stayOk = stCanFund;
+    const verdict = exOk && (!cashKnown || stCanFund);   // if cash is known, the staying party must also be able to fund
+    return {X,f,shareVal,bsdBuy,absdBuy,ssd,exEquity,legalFee:legal,retainedLoan,desiredNewLoan,newTotalLoan,partLoan,downpayment,stInstal,loanLimited,stOutlay,stCanFund,exNet,cpfRefund,exCashOut,exCashAvail,exCpfAvail,exFunds,borrowedFromEx,stRemainingCash,hhFunds,exBudgetOwn,exBudget,exOk,stayOk,verdict};
+  });
+
+  // recommended = smallest split where BOTH parties work
+  let rec = rows.find(r=>r.verdict);                  // CLEAN: smallest cash-positive (and fundable if cash known)
+  let recReason;
+  if(rec){
+    recReason = rec.X===1?'one':'found';
+  } else {
+    const anyExOk = rows.some(r=>r.exOk);
+    const fundable = rows.filter(r=>r.stCanFund);
+    if(cashKnown && anyExOk && fundable.length){
+      rec = fundable[fundable.length-1];              // BEST AVAILABLE: largest split the staying party can fund (most budget for the exiting party)
+      recReason = 'bestfundable';
+    } else if(anyExOk){
+      recReason = 'stayfund';                         // staying party cannot fund a workable share
+    } else {
+      recReason = 'exitcpf';                          // exiting party never cash-positive even at 50%
+    }
+  }
+
+  const stay={stMaxLoan,L,V,E,stLiquidity,stLtvCap,actualRate,stress,tdsr,stAge,stInc,stDebt,partLoanPct,minCashPct,stRes,stTenure,name:stName,pn:pn(stGender)};
+  const exit={exMaxLoanTDSR,exAge,nextOnly,exRes,sr,hold,V,L,minCashPct,intendedPrice,name:exName,exCash,legal:nextLegal,pn:pn(exGender)};
+  G={rows,stay,exit,rec};
+  renderReco(rec,recReason,rows,stay,exit);
+  renderTable(rows,rec);
+  reproject();
+  renderAdvisory(rec,recReason,rows,sr,hold);
+  const wasHidden=$('results').style.display!=='block';
+  selectSplit((rec||rows[0]).X);   // default to recommended; user can click any row
+  $('results').style.display='block';
+  if(wasHidden) $('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderReco(rec,reason,rows,stay,exit){
+  const el=$('reco');
+  if(rec){
+    el.className='reco';
+    let tag, body;
+    if(reason==='bestfundable'){
+      tag = 'Recommended split — best available for both';
+      const topup = rec.exCashOut<0 ? fmt(-rec.exCashOut) : null;
+      body = `No split is perfect on these figures, so this is the best workable one: the <b>largest share ${stay.name} can fund</b>. ${stay.name} takes over the full loan for <b>${fmt(rec.stOutlay)}</b> cash/CPF, and ${exit.name} gets the highest budget among the fundable options — <b>${fmt(rec.exBudget)}</b> for the next purchase.` +
+        (rec.exCashOut<0 ? ` Trade-off: ${exit.pn.P} cash proceeds are <b>−${topup}</b>, so ${exit.pn.s} tops up that much to fully refund ${exit.pn.p} CPF (${stay.name}'s leftover cash can usually cover it).` : ` ${exit.pn.S} also walks away cash-positive (<b>${fmt(rec.exCashOut)}</b>).`) +
+        ` Going to a larger ${exit.name} share would make ${exit.pn.o} fully cash-positive but needs more liquidity from ${stay.name}.`;
+    } else {
+      tag = 'Recommended split — most prudent that works for both';
+      const note = rec.loanLimited ? ` Note: income/LTV caps the new loan at <b>${fmt(rec.newTotalLoan)}</b>.` : '';
+      body = (reason==='one'
+        ? `1/99 <b>is</b> right here — even at 1% ${exit.name} walks away cash-positive (CPF refund is small relative to the share), keeping buyout BSD to the minimum (<b>${fmt(rec.bsdBuy)}</b>).`
+        : `1/99 does <b>not</b> work here — at a thin share ${exit.name}'s CPF refund exceeds ${exit.pn.p} equity. The smallest share that keeps ${exit.pn.o} cash-positive is <b>${rec.X}%</b>, returning <b>${fmt(rec.exCashOut)}</b> cash.`) +
+        ` ${stay.name} can fund it: lowest workable outlay <b>${fmt(rec.stOutlay)}</b> (downpayment + duties + legal after a ${stay.partLoanPct}% part-purchase loan).${note}`;
+    }
+    el.innerHTML=`<div class="tag">${tag}</div>
+      <h2>${stay.name} ${100-rec.X}% <span>/</span> ${exit.name} ${rec.X}%</h2>
+      <p>${body} Every percentage option is in the table below.</p>`;
+    return;
+  }
+  el.className='reco warn';
+  let msg;
+  if(reason==='stayfund'){
+    const f=rows.find(r=>r.exOk);
+    msg=`The smallest split where ${exit.name} walks away cash-positive is <b>${100-f.X}% / ${f.X}%</b> — but even the household's combined <b>${fmt(stay.stLiquidity)}</b> (both parties' cash + ${stay.name}'s CPF) cannot fund that buyout, which needs <b>${fmt(f.stOutlay)}</b>. Fix one of: more household liquidity, a lower CPF amount used, or a later decoupling.`;
+  } else {
+    msg=`At every split — even 50% — the exiting party's CPF + accrued interest (${fmt(rows[0].cpfRefund)}) exceeds their share of equity, so they would have to top up cash just to refund their own CPF. They need a larger share than 50%, a lower CPF amount used, or to reconsider the timing of decoupling.`;
+  }
+  el.innerHTML=`<div class="tag">Recommendation</div><h2 style="font-size:22px">No clean split — structural gap</h2><p>${msg}</p>`;
+}
+
+function selectSplit(X){
+  if(!G)return;
+  const row=G.rows.find(r=>r.X===X)||G.rows[0];
+  document.querySelectorAll('#tblBody tr').forEach(tr=>tr.classList.toggle('selected',tr.dataset.x===String(X)));
+  const isRec=G.rec&&G.rec.X===X;
+  renderCompare(row);
+  renderStayMin(G.stay,row);
+  renderAfford(G.stay,G.exit,row);
+  renderIntent(G.exit,row);
+}
+function detailBlock(row){
+  const rec=G.rec, stay=G.stay, exit=G.exit; if(!rec) return '';
+  const bigger=row.X>rec.X, same=row.X===rec.X;
+  let body;
+  if(same){
+    body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> A <i>smaller</i> exiting share saves stamp duty, but moves less of the home's equity to ${exit.name} — so ${exit.pn.s} has less for ${exit.pn.p} next property, and below ${rec.X}% ${exit.pn.p} share frees up less equity than ${exit.pn.p} CPF refund requires, so ${exit.pn.s} would need to top up cash. A <i>larger</i> share gives ${exit.pn.o} more equity and budget, but costs more stamp duty and a bigger loan for ${stay.name}. <b>${rec.X}% is the sweet spot</b> — it is the smallest share where the sale still covers ${exit.pn.p} CPF refund, so ${exit.pn.s} does not have to pay any cash out of ${exit.pn.p} own pocket, while keeping the stamp duty as low as possible.</p>
+      <p style="margin:0 0 8px"><b>If the couple pools money:</b> any cash ${exit.name} would need to top up at a smaller share is not lost — it goes back into ${exit.pn.p} CPF and funds ${exit.pn.p} next purchase. So a smaller, cheaper share can still work if ${exit.pn.s} is not planning to spend much on ${exit.pn.p} next home; pick ${rec.X}% or higher when ${exit.pn.s} wants the most buying power for the next property.</p>
+      <p style="margin:0"><b>Watch-out:</b> 5% of the next purchase must be paid in <i>cash</i> (CPF cannot). Smaller shares turn ${exit.pn.p} cash into CPF, so check ${exit.pn.p} leftover cash still clears that 5% — ${rec.X}% keeps more cash in ${exit.pn.p} hand.</p>`;
+  } else if(!bigger){
+    body=`<p style="margin:0 0 8px"><b>Cheaper — but here is the catch.</b> ${row.X}% saves <b>${fmt(rec.bsdBuy-row.bsdBuy)}</b> in stamp duty and ${fmt(rec.stOutlay-row.stOutlay)} of ${stay.name}'s outlay versus ${rec.X}%.${row.exCashOut<0?` But ${exit.name}'s share frees up less equity than ${exit.pn.p} CPF refund requires — ${exit.pn.s} tops up <b>${fmt(-row.exCashOut)}</b> in cash. That cash is not lost (it returns to ${exit.pn.p} CPF), but it is now locked as CPF, not spendable cash.`:''}</p>
+      <p style="margin:0 0 8px"><b>The real cost:</b> less equity is moved to ${exit.name}, so ${exit.pn.p} next-purchase budget falls to <b>${fmt(row.exBudget)}</b> (from ${fmt(rec.exBudget)}). If ${exit.pn.s} wants a substantial next property, that loss outweighs the stamp-duty saving.</p>
+      <p style="margin:0"><b>Pick ${row.X}% only if:</b> ${exit.pn.S} is buying modestly (or not at all) next, the couple pools cash, and ${exit.pn.p} leftover <i>cash</i> after topping up CPF still meets the 5% minimum-cash rule on the next purchase.</p>`;
+  } else {
+    body=`<p style="margin:0 0 8px"><b>More for ${exit.name} — at a higher cost.</b> ${row.X}% moves more equity to ${exit.pn.o}: budget <b>${fmt(row.exBudget)}</b> (vs ${fmt(rec.exBudget)}), cash ${fmt(row.exCashOut)}. But it costs <b>${fmt(row.bsdBuy-rec.bsdBuy)}</b> more stamp duty, a bigger outlay for ${stay.name} (${fmt(row.stOutlay)}), and a larger loan on ${stay.pn.p} side — more lifetime interest.</p>
+      <p style="margin:0"><b>Pick ${row.X}% only if:</b> ${exit.name} genuinely needs the extra firepower for a bigger next purchase${row.stayOk?` and ${stay.name} can comfortably fund and service the larger loan.`:` — but note ${stay.name} cannot fund this buyout as entered.`}</p>`;
+  }
+  return `<button onclick="const d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';this.textContent=d.style.display==='none'?'Show detailed analysis ▾':'Hide detailed analysis ▴'" style="background:#f3f4f6;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:10px;color:var(--navy)">Show detailed analysis ▾</button><div style="display:none;font-size:13px;color:var(--ink);margin-top:10px;line-height:1.55;background:var(--warnbg);border:1px solid #eedcb6;border-radius:10px;padding:14px 16px">${body}</div>`;
+}
+function renderCompare(row){
+  const el=$('compareNote'); if(!el)return;
+  const rec=G.rec, stay=G.stay, exit=G.exit;
+  if(!rec){ el.innerHTML=''; return; }
+  if(row.X===rec.X){
+    const prev=rec.X<=1?null:G.rows.filter(r=>r.X<rec.X).pop();   // next-smaller exiting share
+    if(prev){
+      const why = prev.exCashOut<0
+        ? `At <b>${prev.X}%</b>, ${exit.name}'s share frees up less equity than ${exit.pn.p} CPF refund requires — ${exit.pn.s} would have to top up <b>${fmt(-prev.exCashOut)}</b> in cash just to refund ${exit.pn.p} own CPF`
+        : `At <b>${prev.X}%</b>, ${exit.name} pulls less equity out — cash ${fmt(prev.exCashOut)} vs ${fmt(rec.exCashOut)}`;
+      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}% (not ${100-prev.X}% / ${prev.X}%)?</b><br>${why}. At <b>${rec.X}%</b> the sale covers ${exit.pn.p} CPF and leaves ${exit.pn.o} <b>${fmt(rec.exCashOut)}</b> in hand, with more equity to put toward ${exit.pn.p} next home — for only <b>${fmt(rec.bsdBuy-prev.bsdBuy)}</b> more stamp duty.${detailBlock(row)}</div>`;
+    } else {
+      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Even at this small share ${exit.name} walks away cash-positive (<b>${fmt(rec.exCashOut)}</b>), so it is the lowest-cost split that works — keeping stamp duty to a minimum.${detailBlock(row)}</div>`;
+    }
+    return;
+  }
+  const bigger=row.X>rec.X;
+  let pts;
+  if(bigger){
+    pts=`<li><b>${exit.name} gets more</b> — cash proceeds ${fmt(row.exCashOut)} (vs ${fmt(rec.exCashOut)}) and budget ${fmt(row.exBudget)} (vs ${fmt(rec.exBudget)}).</li>
+      <li><b>But it costs more</b> — BSD ${fmt(row.bsdBuy)} (vs ${fmt(rec.bsdBuy)}) and ${stay.name}'s upfront cash/CPF ${fmt(row.stOutlay)} (vs ${fmt(rec.stOutlay)}).</li>
+      ${!row.stayOk?`<li style="color:var(--bad)"><b>And it does not work as entered</b> — the household cannot fund the larger ${fmt(row.stOutlay)} buyout.</li>`:''}`;
+  } else {
+    pts=`<li><b>It is cheaper</b> — BSD ${fmt(row.bsdBuy)} (vs ${fmt(rec.bsdBuy)}) and ${stay.name}'s upfront cash/CPF ${fmt(row.stOutlay)} (vs ${fmt(rec.stOutlay)}).</li>
+      ${row.exCashOut<0?`<li style="color:var(--bad)"><b>But ${exit.name} ends up short</b> — cash proceeds are ${fmt(row.exCashOut)}, so ${exit.pn.s} would top up ${fmt(-row.exCashOut)} to refund ${exit.pn.p} own CPF.</li>`:`<li><b>But ${exit.name} gets less</b> — proceeds ${fmt(row.exCashOut)} (vs ${fmt(rec.exCashOut)}).</li>`}
+      <li><b>Smaller next-purchase budget</b> — ${fmt(row.exBudget)} (vs ${fmt(rec.exBudget)}).</li>`;
+  }
+  el.innerHTML=`<div class="note" style="border-left-color:var(--warn)"><b>Why ${100-row.X}% / ${row.X}% is not the pick</b> — compared with the recommended ${100-rec.X}% / ${rec.X}%:<ul style="margin:6px 0 0;padding-left:18px;line-height:1.5">${pts}</ul>${detailBlock(row)}</div>`;
+}
+// ===== POST-ADVISORY · Part-Share Purchase (today's actuals, live compute) =====
+function psAbsd(v,res,hold){            // ABSD by residency & number of properties held (rates current 2026)
+  if(res==='foreigner')return v*0.60;
+  if(res==='entity')return v*0.65;
+  if(res==='pr')return v*(hold>=3?0.35:hold===2?0.30:0.05);
+  return v*(hold>=3?0.30:hold===2?0.20:0);   // citizen: 1st 0, 2nd 20, 3rd 30
+}
+function psSyncShare(which){            // for 2 owners, the two shares always sum to 100
+  if(!$('psOwners')||$('psOwners').value!=='2')return;
+  if(which==='st'){ const s=n($('psStShare').value)||0; if($('psExShare')) $('psExShare').value=Math.max(0,100-s); }
+  else { const s=n($('psExShare').value)||0; if($('psStShare')) $('psStShare').value=Math.max(0,100-s); }
+}
+function psSet(id,v){ const e=$(id); if(e) e.textContent=v; }
+function psHdr(id,dotc,txt){ const e=$(id); if(e) e.innerHTML=`<span class="dot ${dotc}"></span>${txt}`; }
+function psSyncTenure(){ const a=n($('psStAge').value); if(a>0&&$('psTenure')) $('psTenure').value=Math.max(5,Math.min(30,65-a)); }
+function psBedTable(data,budget,hc){
+  if(!data) return '<p class="hint">No URA data loaded.</p>';
+  const beds=["1BR","2BR","3BR","4BR"];
+  const cell=c=>{ if(!c||!c.p) return '<td>—</td>'; const aff=budget>0&&c.p<=budget; return `<td style="${aff?'background:var(--goodbg);font-weight:700;color:var(--navy)':''}">${fmt(c.p)}</td>`; };
+  const tr=r=>`<tr><td style="text-align:left"><b>${r}</b></td>${beds.map(b=>cell(data[r]&&data[r][b])).join('')}</tr>`;
+  const th=t=>`<th style="background:${hc}${t==='Region'?';text-align:left':''}">${t}</th>`;
+  return `<div class="tablewrap" style="border:none"><table style="min-width:0;font-size:13px">
+    <thead><tr>${['Region','1-BR','2-BR','3-BR','4-BR'].map(th).join('')}</tr></thead>
+    <tbody>${["OCR","RCR","CCR"].map(tr).join('')}</tbody></table></div>`;
+}
+function psCompute(){
+  if(!$('psVal'))return;
+  const V=n($('psVal').value), L=n($('psLoan').value);
+  const stShare=n($('psStShare').value)||0, exShare=n($('psExShare').value)||0;
+  const dpCash=n($('psDpCash').value)||0, partLoanPct=n($('psPartLoan').value)||0;
+  const stRes=$('psStRes').value, hold=parseInt($('psStHold').value)||1;
+  const stLegal=n($('psStLegal').value)||0, stOther=n($('psStOther').value)||0;
+  const stAge=n($('psStAge').value)||0, ten=n($('psTenure').value)||30, rate=n($('psRate').value)||2;
+  const exCpf=n($('psExCpf').value)||0, ssdR=n($('psSsd').value)||0;
+  const penalty=n($('psPenalty').value)||0, exLegal=n($('psExLegal').value)||0, exOther=n($('psExOther').value)||0;
+  const stress=n($('stress').value)||4, tdsr=n($('tdsr').value)||55, minCashPct=n($('minCash').value)||5;
+  const stN=($('psStName').value||'').trim()||'Staying Owner', exN=($('psExName').value||'').trim()||'Exiting Owner';
+  // buyout
+  const buyout=(exShare/100)*V;
+  const dpCashAmt=(dpCash/100)*buyout, partLoan=(partLoanPct/100)*buyout;
+  const balPct=Math.max(0,100-dpCash-partLoanPct), balAmt=(balPct/100)*buyout;
+  const bsdBuy=bsd(buyout), absdBuy=psAbsd(buyout,stRes,hold);
+  const totalDp=Math.max(0,buyout-partLoan);
+  const totalOutlay=totalDp+bsdBuy+absdBuy+stLegal+stOther;
+  const stExistLoan=(stShare/100)*L;
+  const newLoan=stExistLoan+partLoan;
+  const monthly=newLoan>0?instalment(newLoan,stAge,rate,ten):0;
+  const reqIncome=newLoan>0?(instalment(newLoan,stAge,stress,ten))/(tdsr/100):0;   // TDSR @ stress, no other debt
+  const ssdPay=(ssdR/100)*buyout;
+  const totalExp=ssdPay+penalty+exLegal+exOther;
+  const exOutLoan=(exShare/100)*L;
+  const grossProceeds=buyout-totalExp-exOutLoan;        // cash + CPF
+  const cpfReturned=exCpf;                              // full CPF + accrued interest returns to CPF/OA
+  const cashProceeds=grossProceeds-cpfReturned;         // cash in hand (negative = top up)
+  // headings reflect names
+  psHdr('psStHdr1','stay',`${stN} (Buyer)`); psHdr('psStHdr2','stay',`${stN} — Outlay`);
+  psHdr('psExHdr1','exit',`${exN} (Seller)`); psHdr('psExHdr2','exit',`${exN} — Expenses &amp; Proceeds`);
+  psSet('psBuyoutLbl',`Buying Over ${exN}'s Property Value`);
+  psSet('psStExistLoanLbl',`${stN}'s Existing Loan`);
+  psSet('psExOutLoanLbl',`Less: ${exN}'s Outstanding Loan`);
+  psSet('psBudgetHdr',`New Purchase — What ${exN} Can Afford`);
+  psSet('psNextHdr',`${exN} — Funds & Loan Capacity`);
+  // fill figures
+  psSet('psFinalShare',(stShare+exShare)+' %');
+  psSet('psBuyout',fmt(buyout));
+  psSet('psDpCashPct','('+dpCash.toFixed(0)+'%)'); psSet('psDpCashAmt',fmt(dpCashAmt));
+  psSet('psBalPct','('+balPct.toFixed(0)+'%)'); psSet('psBalAmt',fmt(balAmt));
+  psSet('psPartLoanPctL','('+partLoanPct.toFixed(0)+'%)'); psSet('psPartLoanAmt',fmt(partLoan));
+  psSet('psBsd',fmt(bsdBuy));
+  psSet('psAbsdPct','('+(buyout>0?Math.round(absdBuy/buyout*100):0)+'%)'); psSet('psAbsd',fmt(absdBuy));
+  psSet('psTotalOutlay',fmt(totalOutlay));
+  psSet('psStExistLoan',fmt(stExistLoan));
+  psSet('psNewLoan',fmt(newLoan));
+  psSet('psTipOutlay',`Downpayment ${fmt(totalDp)} + BSD ${fmt(bsdBuy)} + ABSD ${fmt(absdBuy)} + Legal ${fmt(stLegal)} + Others ${fmt(stOther)}`);
+  psSet('psTipLoan',`${stN}'s existing loan ${fmt(stExistLoan)} + part-purchase loan ${fmt(partLoan)}`);
+  psSet('psReqIncome',fmt(Math.round(reqIncome))+'/mo');
+  psSet('psMonthly',fmt(Math.round(monthly))+'/mo');
+  psSet('psSsdPay',fmt(ssdPay));
+  psSet('psTotalExp',fmt(totalExp));
+  psSet('psShareVal',fmt(buyout));
+  psSet('psShareValLbl',`${exN}'s Share Value (gross)`);
+  psSet('psTotalExp2',fmt(totalExp));
+  psSet('psExOutLoan','−'+fmt(exOutLoan));
+  psSet('psCpfLess','−'+fmt(cpfReturned));
+  psSet('psProceeds',fmt(cashProceeds));
+  psSet('psTipProceeds',`${exN}'s share value ${fmt(buyout)} − total expenses ${fmt(totalExp)} − outstanding loan ${fmt(exOutLoan)} − CPF refund ${fmt(cpfReturned)}`);
+  if($('psProceeds')) $('psProceeds').className='v'+(cashProceeds<0?' neg':'');
+  psSet('psCpfReturned',fmt(cpfReturned));
+  psSet('psCpfReturnedLbl',`CPF + Accrued Interest returned to ${exN}'s CPF-OA`);
+  psSet('psExCashLbl',`(${exN} + ${stN} combined, if pooled)`);
+  if($('psProceedsNote')) $('psProceedsNote').innerHTML = cashProceeds<0
+    ? `<div class="pinkbox">After paying off the loan and expenses, the sale proceeds aren't enough to return all of ${exN}'s CPF. ${exN} needs to top up <b>${fmt(-cashProceeds)}</b> in cash to fully refund the CPF (with accrued interest) back into the CPF account.</div>`
+    : (cpfReturned>0?`<p class="hint" style="margin:0">The ${fmt(cpfReturned)} CPF returns to ${exN}'s CPF/OA — usable for the next purchase, not cash in pocket.</p>`:'');
+  // exiting owner's buying power today + URA tables
+  const exCash=n($('psExCash').value)||0, exCpfBal=n($('psExCpfBal').value)||0, exInc=n($('psExInc').value)||0, exDebt=n($('psExDebt').value)||0, exAge=n($('psExAge').value)||35, exRes=$('psExRes').value;
+  const exTen=Math.max(5,Math.min(30,65-exAge));
+  const cashTotal=exCash+cashProceeds;                 // cash bucket
+  const cpfTotal=cpfReturned+exCpfBal;                 // CPF returned + existing CPF-OA
+  const funds=cashTotal+cpfTotal;
+  const loanMaxEx=maxLoanTDSR(exInc,exDebt,exAge,stress,tdsr,exTen);
+  const budget=maxAffordablePrice(funds,cashTotal,loanMaxEx,exRes,true,minCashPct,3000);
+  const usableLoan=Math.round(Math.min(loanMaxEx,0.75*budget));
+  const bsdNext=budget>0?bsd(budget):0, absdNext=budget>0?absd(budget,exRes,true):0, buyingPower=funds+usableLoan;
+  if($('psBudgetOut')) $('psBudgetOut').innerHTML=`
+      <div class="card">
+        <h3><span class="dot next"></span>${exN}'s Buying Power — Today</h3>
+        <div class="grid cols-2">
+          <div>
+            <div class="kv"><span class="k">Cash on hand</span><span class="v">${fmt(exCash)}</span></div>
+            <div class="kv"><span class="k">Add: Cash proceeds from sale</span><span class="v ${cashProceeds<0?'neg':''}">${fmt(cashProceeds)}</span></div>
+            <div class="kv"><span class="k">Add: CPF returned (refund + accrued interest)</span><span class="v">${fmt(cpfReturned)}</span></div>
+            <div class="kv"><span class="k">Add: Existing CPF-OA balance</span><span class="v">${fmt(exCpfBal)}</span></div>
+            <div style="background:#f2ecfb;border:1px solid #ddd0f2;border-radius:8px;padding:4px 12px;margin:7px 0">
+              <div class="kv" style="border-bottom:1px solid #e3d7f5"><span class="k"><b>Total cash + CPF</b></span><span class="v" style="color:var(--navy)">${fmt(funds)}</span></div>
+              <div class="kv" style="border-bottom:none"><span class="k"><b>Add: Max loan — Income/age/debt</b> <span style="font-weight:400;font-size:11px">(TDSR @ stress, ${exTen} yrs)</span></span><span class="v" style="color:var(--navy)">${fmt(usableLoan)}</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;justify-content:center">
+            <div class="kvhi" style="font-size:15px;background:#e6dafb;border-color:#cdb6f0"><span class="k"><b>Indicative budget today</b></span><span class="v">${budget>0?fmt(budget):'—'}</span></div>
+            <p class="hint" style="margin-top:6px">Total cash + CPF + max loan, after deducting BSD/ABSD &amp; legal on the next purchase.</p>
+            <details class="assump" style="margin-top:8px;background:#f3f4f6">
+              <summary>Cost breakdown at this budget</summary>
+              <div style="padding:4px 0 2px">
+                <div class="kv"><span class="k">Total buying power (cash + CPF + loan)</span><span class="v">${fmt(buyingPower)}</span></div>
+                <div class="kv"><span class="k">Less: Buyer's Stamp Duty (BSD)</span><span class="v">−${fmt(bsdNext)}</span></div>
+                <div class="kv"><span class="k">Less: ABSD</span><span class="v">${absdNext>0?'−'+fmt(absdNext):'$0'}</span></div>
+                <div class="kv"><span class="k">Less: Legal &amp; conveyancing fee</span><span class="v">−${fmt(3000)}</span></div>
+                <div class="kvhi"><span class="k"><b>Property price (max budget)</b></span><span class="v">${budget>0?fmt(budget):'—'}</span></div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="border-top:3px solid #6938c4"><p class="hint" style="margin:0 0 8px;font-size:13px"><b style="color:#6938c4">New launch</b> — recent URA transacted prices, by region.</p>${psBedTable(typeof NEWLAUNCH!=='undefined'?NEWLAUNCH:null,budget,'#6938c4')}</div>
+      <div class="card" style="border-top:3px solid #0d9488"><p class="hint" style="margin:0 0 8px;font-size:13px"><b style="color:#0d9488">Resale</b> — recent URA transacted prices (70+ yrs lease / freehold).</p>${psBedTable(typeof MATRIX!=='undefined'?MATRIX:null,budget,'#0d9488')}</div>
+      <p class="hint" style="margin-top:2px;line-height:1.55"><b>How these figures are derived:</b> each cell is the <b>median transacted price</b> from URA over the last ~12 months, grouped by region (OCR / RCR / CCR) and by the unit's <b>floor area as a proxy for bedroom count</b> (≈ 1BR 380–590, 2BR 590–860, 3BR 860–1,130, 4BR 1,130–1,615 sq ft). Because bedrooms are inferred from size, a large 2-bedder or a compact 4-bedder can fall into the next band — so treat these as <b>size-based guides, not exact bedroom prices</b>. New-launch figures also shift with whichever projects happened to launch recently. The <b>Resale</b> table counts only units with <b>70+ years of lease remaining</b> (plus all freehold). So old, short-lease units don't drag the benchmark down. These resale prices lean towards the more <b>affordable / value end</b> of the market.</p>`;
+}
+function psMile(date,title,desc,color){
+  return `<div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)">
+    <div style="min-width:104px;font-weight:700;color:var(--navy);font-size:12.5px">${date}</div>
+    <div><div style="font-weight:700;font-size:13px;color:${color}">${title}</div><div style="font-size:12px;color:var(--ink);margin-top:2px;line-height:1.5">${desc}</div></div></div>`;
+}
+function psTimeline(){
+  const otp=$('psOTP').value; if(!otp){ $('psTimelineOut').innerHTML='<div class="note">Pick the decoupling OTP date first.</div>'; return; }
+  const exN=($('psExName').value||'').trim()||'Exiting owner', stN=($('psStName').value||'').trim()||'Staying owner';
+  const exW=parseInt($('psExercise').value)||0, compW=parseInt($('psCompletion').value)||0;
+  const addW=(d,w)=>{const x=new Date(d);x.setDate(x.getDate()+w*7);return x;};
+  const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+  const f=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const g=id=>($(id)?$(id).textContent:'$0');
+  // decoupling dates
+  const dOtp=new Date(otp+'T00:00:00'), dEx=addW(dOtp,exW), dBsd=addD(dEx,14), dComp=addW(dEx,compW);
+  // onward purchase — derived automatically: she can commit (exercise) once the decoupling is binding (exercised),
+  // and the new completion must be on/after the decoupling completion (when funds arrive)
+  const nComp=addW(dComp,3);   // CPF refund needs the law firm to write to CPF — allow a 3-week gap after decoupling completion
+  const absdTxt=g('psAbsd')!=='$0'?` + ABSD ${g('psAbsd')}`:'';
+  $('psTimelineOut').innerHTML=`
+  <div style="margin-top:16px">
+    <div class="tlgrid">
+      <div class="tlcard dec"><div class="tt" style="color:#c0392b">OTP granted</div>${stN} pays option / downpayment <b>${g('psDpCashAmt')}</b> to ${exN}.</div>
+      <div class="tlcard dec"><div class="tt" style="color:#c0392b">OTP exercised</div>Decoupling sale becomes binding.</div>
+      <div class="tlcard dec"><div class="tt" style="color:#c0392b">Stamp duty due</div>${stN} pays BSD <b>${g('psBsd')}</b>${absdTxt} (within 14 days).</div>
+      <div class="tlcard dec"><div class="tt" style="color:#c0392b">Sales completion — funds released</div>CPF <b>${g('psCpfReturned')}</b> back + cash proceeds <b>${g('psProceeds')}</b>.</div>
+      <div class="tlcard empty"></div>
+    </div>
+    <div class="tlaxis">
+      <div class="tlpt"><span class="tldot dec"></span><span class="tldate">${f(dOtp)}</span></div>
+      <div class="tlpt"><span class="tldot dec"></span><span class="tldate">${f(dEx)}</span></div>
+      <div class="tlpt"><span class="tldot dec"></span><span class="tldate">${f(dBsd)}</span></div>
+      <div class="tlpt"><span class="tldot dec"></span><span class="tldate">${f(dComp)}</span></div>
+      <div class="tlpt"><span class="tldot onw"></span><span class="tldate">${f(nComp)}</span></div>
+    </div>
+    <div class="tlgrid">
+      <div class="tlcard empty"></div>
+      <div class="tlcard onw"><div class="tt" style="color:#6938c4">Exercise new OTP — earliest</div>${exN} can safely commit once the decoupling is binding.</div>
+      <div class="tlcard onw"><div class="tt" style="color:#6938c4">Stamp duty due — new purchase</div>${exN} pays BSD within 14 days of exercising.</div>
+      <div class="tlcard empty" style="font-size:11px;color:var(--muted);padding:8px 4px">CPF refund in transit — the law firm writes to CPF to release the funds (~3 weeks).</div>
+      <div class="tlcard onw"><div class="tt" style="color:#6938c4">New purchase completion — earliest</div>Funded by the decoupling proceeds + new loan.</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:18px;margin-top:12px;font-size:11.5px;color:var(--muted)"><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#c0392b;margin-right:5px;vertical-align:middle"></span>Decoupling (above the line)</span><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#6938c4;margin-right:5px;vertical-align:middle"></span>${exN}'s onward purchase (below the line)</span></div>
+  <div class="pinkbox" style="background:#eef9f4;border-color:#bfe3cf;color:var(--navy);margin-top:10px">⏱ Key rule: ${exN} can <b>exercise</b> the new OTP from <b>${f(dEx)}</b>, but the new purchase <b>completion must be on/after ${f(nComp)}</b> — at least <b>3 weeks after</b> the decoupling completion (${f(dComp)}). The CPF refund isn't instant: the law firm has to write to CPF to release the money, which takes a few days to weeks.</div>`;
+}
+function renderBedMatrix(data, bodyId, sub, dotColor, cagr, yrs){
+  const el=$(bodyId); if(!el) return;
+  if(!data){ el.innerHTML=''; return; }
+  cagr=cagr||0; yrs=yrs||0;
+  const f=Math.pow(1+cagr/100,yrs);
+  const beds=["1BR","2BR","3BR","4BR"];
+  const cell=c=>(c&&c.p)?`<b style="color:${dotColor||'var(--navy)'}">${fmt(Math.round(c.p*f))}</b><div style="font-size:10px;color:var(--muted)">today ${fmt(c.p)}</div>`:'—';
+  const tr=r=>`<tr><td style="text-align:left"><b>${r}</b></td>${beds.map(b=>`<td>${cell(data[r]&&data[r][b])}</td>`).join('')}</tr>`;
+  el.innerHTML=`
+    <p class="hint" style="margin:0 0 8px">${sub} Prices grown to the decoupling date at <b>${cagr}%/yr over ${yrs} year${yrs==1?'':'s'}</b>; "today" is the current level.</p>
+    <div class="tablewrap" style="border:none"><table style="min-width:0;font-size:13px">
+      <thead><tr><th style="text-align:left">Region</th><th>1-Bedroom</th><th>2-Bedroom</th><th>3-Bedroom</th><th>4-Bedroom</th></tr></thead>
+      <tbody>${["OCR","RCR","CCR"].map(tr).join('')}</tbody></table></div>
+    <p class="hint" style="margin-top:8px">A "—" means no recent transaction in that band. Auto-refreshed from URA on each update.</p>`;
+}
+function reproject(){
+  renderBedMatrix(typeof NEWLAUNCH!=='undefined'?NEWLAUNCH:null,'newLaunchBody','Recent new-launch transacted prices from URA, by region.','#6938c4',n($('projCAGRnew').value)||0,n($('projYearsNew').value)||0);
+  renderBedMatrix(typeof MATRIX!=='undefined'?MATRIX:null,'ocrBody','Recent resale transacted prices from URA — only units with 70+ years of lease remaining (freehold included), by region.','#0d9488',n($('projCAGRresale').value)||0,n($('projYearsResale').value)||0);
+}
+function renderTable(rows,rec){
+  const b=$('tblBody'); b.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.dataset.x=r.X;
+    tr.onclick=()=>selectSplit(r.X);
+    if(rec&&r.X===rec.X)tr.className='best';
+    else if(!r.verdict)tr.className='infeasible';
+    tr.innerHTML=`
+      <td>${100-r.X}% / ${r.X}%${rec&&r.X===rec.X?'<span class="pill recpill">BEST</span>':''}</td>
+      <td>${fmt(r.bsdBuy)}</td>
+      <td>${r.ssd>0?fmt(r.ssd):'—'}</td>
+      <td>${fmt(r.stOutlay)}</td>
+      <td>${r.stayOk?'<span class="pill ok">Yes</span>':'<span class="pill no">No</span>'}</td>
+      <td class="${r.exCashOut<0?'neg':''}">${fmt(r.exCashOut)}</td>
+      <td>${r.exBudget>0?fmt(r.exBudget):'—'}</td>`;
+    b.appendChild(tr);
+  });
+}
+
+function renderStayMin(stay,row){
+  const af=annuity(stay.stAge,stay.stress);
+  const targetLoan=Math.min(row.desiredNewLoan,stay.stLtvCap);     // the new restructured loan (LTV-capped)
+  const minAvail=targetLoan/af;
+  const minIncome=(minAvail+stay.stDebt)/(stay.tdsr/100);          // income to service the new restructured loan
+  const incomeGap=Math.max(0,minIncome-stay.stInc);
+  const meets=stay.stInc>=minIncome;
+  const total=row.stOutlay, short=Math.max(0,total-stay.stLiquidity);
+  $('stayMinCard').innerHTML=`
+    <h3><span class="dot stay"></span>${stay.name}'s Buyout Requirements (${row.X}% Split)</h3>
+    <div class="grid cols-2">
+      <div>
+        <p style="font-size:11.5px;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.5px">How much income — to take over the new ${fmt(row.newTotalLoan)} loan</p>
+        <div class="kv"><span class="k">New Restructured Loan to Service</span><span class="v">${fmt(row.newTotalLoan)}</span></div>
+        <div class="kv"><span class="k">Monthly Instalment @ ${stay.actualRate}% over ${tenure(stay.stAge,stay.stTenure)} yrs</span><span class="v">${fmt(row.stInstal)}/mo</span></div>
+        <div class="kv"><span class="k">Min Gross Monthly Income Needed${stay.stDebt>0?` (with ${fmt(stay.stDebt)} debts)`:''}</span><span class="v">${fmt(minIncome)}/mo</span></div>
+        <div class="kv"><span class="k">${stay.name}'s Income</span><span class="v">${fmt(stay.stInc)}/mo</span></div>
+        <div class="kv"><span class="k">Status</span><span class="v">${meets?'<span class="pill ok">Qualifies</span>':'<span class="pill no">Short '+fmt(incomeGap)+'/mo</span>'}</span></div>
+        ${row.loanLimited?`<div class="note" style="border-left-color:var(--bad)">Income/LTV caps the loan below the standard ${stay.partLoanPct}% — so the cash downpayment rises (shown right).</div>`:''}
+      </div>
+      <div>
+        <p style="font-size:11.5px;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.5px">How much cash / CPF — to buy over the share</p>
+        <div class="kv"><span class="k">Exiting Owner's Share Value</span><span class="v">${fmt(row.shareVal)}</span></div>
+        <div class="kv"><span class="k">Part-Purchase Loan (${stay.partLoanPct}%)</span><span class="v">${fmt(row.partLoan)}</span></div>
+        <div class="kv"><span class="k">Downpayment (Cash + CPF)</span><span class="v">${fmt(row.downpayment)}</span></div>
+        <div class="kv"><span class="k">BSD + ABSD + Legal</span><span class="v">${fmt(row.bsdBuy+row.absdBuy+row.legalFee)}</span></div>
+      </div>
+    </div>
+    <div style="background:#fffaf0;border:1px solid #eedcb6;border-radius:10px;padding:14px 16px;margin-top:12px">
+      <div style="font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total downpayment + expenses to complete the buyout (at ${row.X}% split)</div>
+      <div style="font-size:24px;font-weight:700;color:var(--navy);margin:3px 0">${fmt(total)}</div>
+      <div style="font-size:13px;color:var(--ink)">Downpayment ${fmt(row.downpayment)} + BSD ${fmt(row.bsdBuy)} + ABSD ${fmt(row.absdBuy)} + legal ${fmt(row.legalFee)}.<br>Both parties' combined cash savings plus ${stay.name}'s existing CPF total up to <b>${fmt(stay.stLiquidity)}</b>, which is ${short<=0?`<span style="color:var(--good);font-weight:700">enough to cover this ${fmt(total)} buyout</span>`:`<span style="color:var(--bad);font-weight:700">short by ${fmt(short)}</span>`}.</div>
+    </div>`;
+}
+function renderDetails(stay,exit,row,hasRec){
+  const lbl=hasRec?`recommended ${100-row.X}% / ${row.X}% split`:`selected ${100-row.X}% / ${row.X}% split`;
+  const cash5=row.shareVal*(stay.minCashPct/100);
+  const balanceDP=Math.max(0,row.downpayment-cash5);
+  const incomeOk=stay.stMaxLoan>=row.newTotalLoan;
+  $('stayDetail').innerHTML=`
+    <p style="font-size:11.5px;color:var(--muted);margin:0 0 4px;text-transform:uppercase;letter-spacing:.5px">A · Buying over the exiting owner's share <span style="text-transform:none">(${lbl})</span></p>
+    <div class="kv"><span class="k">Exiting Owner's Share Value (${row.X}%)</span><span class="v">${fmt(row.shareVal)}</span></div>
+    <div class="kv"><span class="k">Part-Purchase Loan (${stay.partLoanPct}%)</span><span class="v">${fmt(row.partLoan)}</span></div>
+    <div class="kv"><span class="k">Downpayment — Cash (${stay.minCashPct}%)</span><span class="v">${fmt(cash5)}</span></div>
+    <div class="kv"><span class="k">Downpayment — Balance (Cash/CPF)</span><span class="v">${fmt(balanceDP)}</span></div>
+    <div class="kv"><span class="k">Buyer's Stamp Duty (BSD)</span><span class="v">${fmt(row.bsdBuy)}</span></div>
+    <div class="kv"><span class="k">Additional BSD (ABSD)</span><span class="v">${row.absdBuy>0?fmt(row.absdBuy):'$0'}</span></div>
+    <div class="kv"><span class="k">Legal / Conveyancing</span><span class="v">${fmt(row.legalFee)}</span></div>
+    <div class="kv"><span class="k"><b>Total Downpayment + Expenses</b></span><span class="v" style="color:var(--navy)">${fmt(row.stOutlay)}</span></div>
+    <p style="font-size:11.5px;color:var(--muted);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.5px">B · New restructured loan</p>
+    <div class="kv"><span class="k">Retained Loan (Staying Party's ${100-row.X}% Share)</span><span class="v">${fmt(row.retainedLoan)}</span></div>
+    <div class="kv"><span class="k">+ Part-Purchase Loan</span><span class="v">${fmt(row.partLoan)}</span></div>
+    <div class="kv"><span class="k"><b>New Restructured Loan</b></span><span class="v">${fmt(row.newTotalLoan)}</span></div>
+    <div class="kv"><span class="k">Monthly Instalment @ ${stay.actualRate}% over ${tenure(stay.stAge)} yrs</span><span class="v">${fmt(row.stInstal)}/mo</span></div>
+    <div class="kv"><span class="k">Max Loan Income Supports (TDSR @ ${stay.stress}% Stress)</span><span class="v">${fmt(stay.stMaxLoan)}</span></div>
+    <div class="kv"><span class="k">Income Covers This Loan?</span><span class="v">${incomeOk?'<span class="pill ok">Yes</span>':'<span class="pill no">No</span>'}</span></div>
+    <div class="kv"><span class="k">Cash + CPF on Hand vs Outlay</span><span class="v">${row.stCanFund?'<span class="pill ok">Enough</span>':'<span class="pill no">Short '+fmt(row.stOutlay-stay.stLiquidity)+'</span>'}</span></div>`;
+  $('exitDetail').innerHTML=`
+    <div class="kv"><span class="k">Sale Proceeds — Cash in Hand (${row.X}% Split)</span><span class="v ${row.exCashOut<0?'neg':''}">${fmt(row.exCashOut)}</span></div>
+    <div class="kv"><span class="k">CPF + Accrued Interest Refunded to ${exit.name}</span><span class="v">${fmt(row.cpfRefund)}</span></div>
+    <div class="kv"><span class="k">Cash Available for Next (Savings + Proceeds)</span><span class="v">${fmt(row.exCashAvail)}</span></div>
+    <div class="kv"><span class="k">CPF Available for Next (Savings + Refund)</span><span class="v">${fmt(row.exCpfAvail)}</span></div>
+    <div class="kv"><span class="k">Max Loan (Income, TDSR @ Stress)</span><span class="v">${fmt(exit.exMaxLoanTDSR)}</span></div>
+    <div class="kv"><span class="k">SSD on Buyout Share</span><span class="v">${exit.sr>0?(exit.sr*100)+'% (held '+exit.hold+'y)':'0% (past SSD window)'}</span></div>
+    <div class="kv"><span class="k">Walks Away Cash-Positive?</span><span class="v">${row.exOk?'<span class="pill ok">Yes</span>':'<span class="pill no">No — tops up cash</span>'}</span></div>`;
+}
+
+function valTypeUI(){ const t=$('valType')?$('valType').value:'resale'; if($('valCAGR')) $('valCAGR').value = t==='newlaunch'?5:3.5; }
+// ---- auto-save / restore so figures are never lost across navigation, reloads or reopening ----
+const STORE_KEY='decouplingCalc_v1';
+function saveState(){
+  try{ const d={}; document.querySelectorAll('input,select').forEach(el=>{ if(el.id) d[el.id]=el.value; }); localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
+}
+function restoreState(){
+  try{ const raw=localStorage.getItem(STORE_KEY); if(!raw) return; const d=JSON.parse(raw);
+    Object.keys(d).forEach(id=>{ const el=$(id); if(el!=null && d[id]!=null) el.value=d[id]; }); }catch(e){}
+}
+function resetAll(){ if(confirm('Clear all figures and start over? Every field resets to default.')){ try{localStorage.removeItem(STORE_KEY);}catch(e){} location.reload(); } }
+function estValue(){
+  const P=n($('valPrice').value), c=(n($('valCAGR').value)||0)/100, y=n($('holdYears').value)||0;
+  if(P<=0){ $('valEstOut').textContent='Enter the purchase price first.'; return; }
+  const v=Math.round(P*Math.pow(1+c,y));
+  $('propVal').value=addCommas(v);
+  $('valEstOut').innerHTML=`${fmt(P)} grown at ${(c*100).toFixed(1)}%/yr over ${y} yr${y==1?'':'s'} ≈ <b>${fmt(v)}</b> &nbsp;→ filled above.`;
+}
+function loanModeUI(){ const prog=$('loanMode')&&$('loanMode').value==='progressive'; if($('loanProgRow')) $('loanProgRow').style.display=prog?'block':'none'; }
+function syncLoanOrig(){
+  const price=$('valPrice')?n($('valPrice').value):0, pct=$('loanPct')?n($('loanPct').value):75;
+  if(price>0 && pct>0 && $('loanOrig')) $('loanOrig').value=addCommas(Math.round(price*pct/100));
+}
+function estLoan(){
+  const P=n($('loanOrig').value), Yt=n($('loanTenureYrs').value)||30, r=((n($('loanRate').value)||2)/100)/12;
+  const held=n($('holdYears').value)||0, nM=Math.round(Yt*12);
+  const mode=$('loanMode')?$('loanMode').value:'resale';
+  if(P<=0||nM<=0){ $('loanEstOut').textContent='Enter the original loan amount and tenure first.'; return; }
+  const heldM=Math.min(Math.round(held*12),nM);
+  const af=r>0? r/(1-Math.pow(1+r,-nM)) : 1/nM;          // full-tenure monthly amortisation factor
+  let bal, note, drawn=P;   // resale: loan treated as fully drawn from purchase
+  if(mode==='progressive'){
+    // BUC — JND method (matches the JND NL-vs-Resale toolkit). The loan disburses progressively across the
+    // construction phase (to TOP). For each stage JND amortises the GROSS cumulative drawn — interest on the
+    // cumulative drawn, principal = instalment − interest — resetting the balance to the gross cumulative each
+    // stage, so principal barely reduces during the build. Decoupling needs a completed property, so the
+    // outstanding is reported against the FULL original loan.
+    const phaseY=n($('loanPhase').value)||4, scale=(phaseY*12)/48;   // pre-TOP canonical schedule = 48 months, fit into years-to-TOP
+    // pre-TOP stages [draw fraction of loan, duration months]: foundation lead → car park
+    const PRE=[[0,10],[0.066667,10],[0.133333,10],[0.066667,3],[0.066667,3],[0.066667,6],[0.066667,6]];
+    let cum=0, prinPaid=0, t=0;
+    for(const st of PRE){
+      if(t>=heldM) break;                                // decoupled before this stage draws
+      cum+=P*st[0];                                       // cumulative loan drawn so far
+      const MI=r>0?cum*af:cum/nM;                         // instalment on cumulative drawn, full tenure
+      const dur=Math.max(1,Math.round(st[1]*scale));
+      let b=cum;                                          // JND resets the amortising balance to gross cumulative each stage
+      for(let m=0;m<dur && t<heldM;m++){ const pr=Math.max(0,MI-b*r); b-=pr; prinPaid+=pr; t++; }   // principal = instalment − interest
+    }
+    let b2=P-prinPaid;
+    while(t<heldM){ const pr=r>0?Math.max(0,P*af-b2*r):P/nM; b2=Math.max(0,b2-pr); prinPaid+=pr; t++; }   // past TOP — amortise full loan
+    bal=P-prinPaid; drawn=P;                              // full loan is the liability at decoupling
+  } else {
+    const k=heldM;
+    if(r>0){ const M=P*af; bal=P*Math.pow(1+r,k)-M*((Math.pow(1+r,k)-1)/r); }   // standard amortisation from purchase
+    else { bal=P*(1-k/nM); }
+  }
+  bal=Math.max(0,Math.min(P,Math.round(bal)));
+  drawn=Math.round(Math.min(P,drawn));
+  const repaid=Math.max(0,drawn-bal), undrawn=Math.max(0,P-drawn);
+  $('propLoan').value=addCommas(bal);
+  if(mode==='progressive'){
+    note=`New launch — loan drawn <b>${fmt(drawn)}</b> of ${fmt(P)}${undrawn>1000?` <span style="color:var(--warn);font-weight:600">(not yet fully drawn — ${fmt(undrawn)} still disburses at TOP/CSC, so it is not owed yet)</span>`:` (fully drawn)`}. Principal repaid ${fmt(repaid)}.`;
+  } else {
+    note=`Resale — ${(heldM/12).toFixed(1)} yr repaid. Principal repaid ${fmt(repaid)}.`;
+  }
+  $('loanEstOut').innerHTML=`${Yt}-yr loan at ${(r*1200).toFixed(1)}%. ${note} Outstanding ≈ <b>${fmt(bal)}</b> &nbsp;→ filled above.`;
+}
+function cpfModeUI(){
+  const prog=$('cpfMode') && $('cpfMode').value==='progressive';
+  ['cpfProgTop','cpfProgMid','cpfProgBottom'].forEach(id=>{ if($(id)) $(id).style.display=prog?'block':'none'; });
+  if($('cpfResaleMonthly')) $('cpfResaleMonthly').style.display=prog?'none':'block';
+  if(prog){ bdModeUI(); refreshOA(); costsAtPurchase(); }
+}
+// CPF Ordinary Account allocation rate by age (share of wage that lands in OA)
+// Buyer's Stamp Duty — residential tiers (current 2026, unchanged since 15 Feb 2023)
+function bsd(price){
+  let p=Math.max(0,price), t=0;
+  const tiers=[[180000,.01],[180000,.02],[640000,.03],[500000,.04],[1500000,.05],[Infinity,.06]];
+  for(const [band,rate] of tiers){ const x=Math.min(p,band); t+=x*rate; p-=x; if(p<=0)break; }
+  return Math.round(t);
+}
+// Toggle between % share and direct CPF entry for the at-purchase figure
+function bdModeUI(){
+  const m=$('bdMode')?$('bdMode').value:'pct', manual=m==='manual';
+  if($('bdPctRow')) $('bdPctRow').style.display=manual?'none':'block';
+  if($('bdManualRow')) $('bdManualRow').style.display=manual?'block':'none';
+  if($('bdExCpfRow')) $('bdExCpfRow').style.display=manual?'none':'flex';   // input itself shows the figure in manual mode
+}
+// Upfront-cost breakdown at purchase (pulls price + loan% from Section 1)
+function costsAtPurchase(){
+  if(!$('bdTotal'))return;
+  const price=n($('valPrice').value), loanPct=(n($('loanPct').value)||75)/100;
+  const downPct=Math.max(0,1-loanPct), down=price*downPct;
+  const cash=price*0.05, cpfDp=Math.max(0,down-cash);   // 5% booking is cash; rest cash/CPF
+  const b=bsd(price), legal=n($('bdLegal').value)||0;
+  const total=down+b+legal;
+  const mode=$('bdMode')?$('bdMode').value:'pct';
+  let exCpf;
+  if(mode==='manual'){ exCpf=Math.round(n($('bdManual').value)); }
+  else { const share=(n($('bdShare').value)||0)/100; exCpf=Math.round(share*(cpfDp+b+legal)); }
+  if($('bdDownPct')) $('bdDownPct').textContent=Math.round(downPct*100);
+  $('bdDown').textContent=fmt(Math.round(down));
+  $('bdCash').textContent=fmt(Math.round(cash));
+  $('bdCpfDp').textContent=fmt(Math.round(cpfDp));
+  $('bdBsd').textContent=fmt(b);
+  $('bdTotal').textContent=fmt(Math.round(total));
+  if($('bdMaxCpf')) $('bdMaxCpf').textContent=fmt(Math.round(total-cash));   // everything except the mandatory 5% cash booking
+  $('bdExCpf').textContent=fmt(exCpf);
+}
+function useCostsCpf(){
+  costsAtPurchase();
+  const mode=$('bdMode')?$('bdMode').value:'pct';
+  const v = mode==='manual' ? addCommas($('bdManual').value) : addCommas($('bdExCpf').textContent);
+  if($('cpfLump')) $('cpfLump').value=v;
+}
+function oaRate(age){ if(age<=35)return .23; if(age<=45)return .21; if(age<=50)return .19; if(age<=55)return .15; return .12; }
+function cpfEffIncome(){ const c=n($('cpfIncome').value); return c>0?c:n($('exIncome').value); }   // salary during the loan years (fallback: decoupling-year income, Section 2)
+function cpfEffAge(){ const a=n($('exAge').value)||35, held=n($('holdYears').value)||0; return Math.max(16,Math.round(a-held/2)); }   // average age over the holding period
+function oaMonthly(){ return oaRate(cpfEffAge())*Math.min(cpfEffIncome(),8000); }
+function refreshOA(){
+  if(!$('cpfOAout'))return;
+  const age=cpfEffAge(), inc=cpfEffIncome(), cap=Math.min(inc,8000), r=oaRate(age);
+  $('cpfOAout').textContent=fmt(Math.round(r*cap))+'/mo';
+  if($('cpfOAnote')){
+    if(inc<=0){ $('cpfOAnote').innerHTML=`<span style="color:var(--warn);font-weight:600">↑ Enter the "Avg income while paying the loan" above (or <span class="exname">the exiting party</span>'s income in Section 2) — this line stays $0 until you do.</span>`; }
+    else { $('cpfOAnote').innerHTML=`= <b>${(r*100).toFixed(0)}%</b> CPF-OA allocation (avg age <b>${age}</b> over the hold) × capped salary <b>${fmt(cap)}</b> (Ordinary Wage ceiling $8,000, current for 2026). Brackets: ≤35 → 23%, &gt;35–45 → 21%, &gt;45–50 → 19%, &gt;50–55 → 15%.`; }
+  }
+}
+function estCpf(){
+  const Y=n($('holdYears').value)||3;
+  const C0=n($('cpfLump').value), Cm=n($('cpfMonthly').value);
+  const mode=$('cpfMode')?$('cpfMode').value:'resale';
+  const nM=Math.max(1,Math.round(Y*12));
+  const mfac=Math.pow(1.025,1/12);           // monthly compounding factor for 2.5% p.a.
+  const fvLump=C0*Math.pow(1.025,Y);         // downpayment + BSD leaves at purchase
+  let prin=C0, fvMonthly=0, constrCPF=0, postCPF=0, oaUsed=0;
+  if(mode==='progressive'){
+    const loanPct=(n($('loanPct').value)||75)/100;
+    const loan=n($('loanOrig').value)||(n($('valPrice').value)*loanPct);   // pulled from Section 1 (Property Snapshot)
+    const phaseY=n($('loanPhase').value)||4;                               // construction phase from Section 1
+    const Mc=Math.min(nM,Math.max(1,Math.round(phaseY*12)));   // construction months (capped at hold)
+    const cRate=((n($('cpfConstrRate').value)||1.5)/100)/12;   // construction floating rate, monthly
+    const cpfShare=(n($('cpfShare').value)||50)/100;           // exiting party's share of the mortgage during construction
+    const tenureM=Math.max(1,Math.round((n($('loanTenureYrs').value)||30)*12));
+    const cAf=cRate>0? cRate/(1-Math.pow(1+cRate,-tenureM)) : 1/tenureM;   // full-tenure amortisation factor at the construction rate
+    // Construction (pre-TOP): JND progressive-payment method — same as the loan estimator. The loan disburses in
+    // stages; each month the FULL instalment (principal + interest) is paid on the gross cumulative drawn balance.
+    // The exiting party funds their share via CPF. (Principal portion matches the loan estimator; interest added.)
+    const PRE=[[0,10],[0.066667,10],[0.133333,10],[0.066667,3],[0.066667,3],[0.066667,6],[0.066667,6]];
+    const cScale=(phaseY*12)/48;   // fit the canonical 48-month pre-TOP schedule into the build period
+    let cum=0, cm=0;
+    for(const st of PRE){
+      if(cm>=Mc) break;
+      cum+=loan*st[0];                                   // gross cumulative drawn
+      const MI=cRate>0? cum*cAf : cum/tenureM;           // instalment on cumulative drawn, full tenure
+      let b=cum;
+      const dur=Math.max(1,Math.round(st[1]*cScale));
+      for(let m=0;m<dur && cm<Mc;m++){
+        cm++;
+        const interest=b*cRate, pr=Math.max(0,MI-interest); b-=pr;
+        const herCPF=cpfShare*(interest+pr);             // share of the full instalment (principal + interest)
+        constrCPF+=herCPF; prin+=herCPF;
+        fvMonthly+=herCPF*Math.pow(mfac,nM-cm);
+      }
+    }
+    // From TOP to decoupling: her monthly CPF = her OA contribution (age/income based), capped at the actual instalment.
+    const oa=oaMonthly();
+    const pRate=((n($('cpfPostRate').value)||2)/100)/12;
+    const remM=Math.max(60,Math.round((30-phaseY)*12));        // assume a 30-yr original loan
+    const instal=pRate>0? loan*pRate/(1-Math.pow(1+pRate,-remM)) : loan/remM;
+    oaUsed=Math.min(oa,instal);
+    for(let t=Mc+1;t<=nM;t++){
+      postCPF+=oaUsed; prin+=oaUsed;
+      fvMonthly+=oaUsed*Math.pow(mfac,nM-t);
+    }
+    refreshOA();
+  } else {
+    const i=mfac-1;
+    fvMonthly=Cm*(i>0?((Math.pow(1+i,nM)-1)/i):nM);   // full instalment from day one
+    prin+=Cm*nM;
+  }
+  const total=Math.round(fvLump+fvMonthly);
+  const accrued=total-Math.round(prin);
+  $('exCpfRefund100').value=addCommas(total);
+  const modeTxt = mode==='progressive'
+    ? `progressive — downpayment ${fmt(C0)} + ${Math.round(n($('cpfShare').value)||50)}% construction mortgage (principal + interest) ${fmt(Math.round(constrCPF))} + post-TOP CPF ${fmt(Math.round(postCPF))} (OA ${fmt(Math.round(oaUsed))}/mo)`
+    : `resale — full instalment from day one`;
+  $('cpfEstOut').innerHTML=`Over ${Y} yrs (${modeTxt}): principal ${fmt(Math.round(prin))} + accrued interest ${fmt(accrued)} = <b>${fmt(total)}</b> &nbsp;→ filled above.`;
+}
+// auto-default the staying loan tenure to the years left to age 65 (unless user overrides)
+let tenureTouched=false;
+function syncTenure(){
+  if(tenureTouched)return;
+  const a=n($('stAge').value); if(a<=0)return;
+  const t=Math.max(5,Math.min(30,65-a));
+  $('stTenure').value=t; $('stTenureNum').value=t;
+}
+function tenureInput(val){
+  tenureTouched=true;
+  $('stTenure').value=val; $('stTenureNum').value=val;
+}
+function maxAffordablePrice(funds,cashBucket,Lmax,res,onlyProp,minCashPct,legal){
+  let best=0;
+  for(let P=300000;P<=8000000;P+=10000){
+    const loan=Math.min(Lmax,0.75*P);
+    if(loan<=0)continue;
+    const need=P+bsd(P)+absd(P,res,onlyProp)+(legal||0);   // price + BSD + ABSD + legal fee on the next purchase
+    const cashNeeded=need-loan;
+    if(funds>=cashNeeded && cashBucket>=P*(minCashPct/100)) best=P;
+  }
+  return best;
+}
+function roundTo(x,step){return Math.round(x/step)*step;}
+function bedroomBySize(s){
+  if(s<=0)return "—";
+  if(s<500)return "Studio / 1-bedroom";
+  if(s<700)return "1–2 bedroom";
+  if(s<900)return "2-bedroom";
+  if(s<1100)return "Compact 3-bedroom";
+  if(s<1400)return "3-bedroom";
+  return "4-bedroom / larger";
+}
+function suggestType(P){
+  if(P<=0) return "Budget too low for private property at this split — consider building more cash, a larger share, or an HDB resale option.";
+  if(P<1000000) return "1-bedroom new launch in the OCR, or a 2-bedroom older resale condo in the suburbs / city-fringe.";
+  if(P<1300000) return "2-bedroom OCR new launch, or a 2–3 bedroom resale condo in the OCR near an MRT.";
+  if(P<1600000) return "Compact 3-bedroom OCR new launch near an MRT, or a 2-bedroom in the RCR (city fringe).";
+  if(P<2100000) return "Genuine 3-bedroom OCR near an MRT, or a 2-bedroom RCR new launch.";
+  if(P<2700000) return "3-bedroom RCR, or an entry 2-bedroom in the CCR (prime districts).";
+  return "Spacious 3-bedroom RCR, or a 2–3 bedroom CCR unit in the prime districts.";
+}
+function renderAfford(stay,exit,row){
+  const grossSale=row.f*exit.V, loanRedeem=row.f*exit.L;
+  const maxP=row.exBudget;   // includes the staying party's leftover cash top-up
+  const ltvCap=0.75*maxP;
+  const actualLoan=Math.min(exit.exMaxLoanTDSR, ltvCap);     // loan usable for this price, capped at 75% LTV
+  const ltvBound=exit.exMaxLoanTDSR > ltvCap+1;              // income would support more, but 75% LTV caps it
+  const buyingPower=row.hhFunds + actualLoan;                // cash + CPF + loan
+  const bsdNext=bsd(maxP), absdNext=absd(maxP,exit.exRes,exit.nextOnly), legalNext=nextLegal;
+  const allIn=maxP+bsdNext+absdNext+legalNext;
+  const headroom=buyingPower-allIn;
+  // If income supports more loan than 75% LTV allows: the price that uses the FULL income-supported loan, and the extra cash/CPF needed
+  const fullLoan=exit.exMaxLoanTDSR, priceFull=fullLoan/0.75;
+  const allInFull=priceFull+bsd(priceFull)+absd(priceFull,exit.exRes,exit.nextOnly)+nextLegal;
+  const fullLoanTopUp=Math.max(0,Math.round(allInFull-(fullLoan+row.hhFunds)));
+  const absdLbl=exit.exRes==='citizen'?'citizen, only property':exit.exRes==='pr'?'PR, only property':'foreigner';
+  const costBreak = maxP>0 ? `
+          <button onclick="toggleAfford(this)" style="background:#fff;border:1px solid #bfe3cf;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:8px;color:var(--navy)">${affordOpen?'Hide cost breakdown ▴':'Break down cost details ▾'}</button>
+          <div style="display:${affordOpen?'block':'none'};margin-top:10px">
+            <div class="kv"><span class="k">Property price (max affordable)</span><span class="v">${fmt(maxP)}</span></div>
+            <div class="kv"><span class="k">+ Buyer's Stamp Duty (BSD)</span><span class="v">${fmt(bsdNext)}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin:2px 0 6px">BSD = ${bsdExplain(maxP)}</div>
+            <div class="kv"><span class="k">+ ABSD (${absdLbl})</span><span class="v">${absdNext>0?fmt(absdNext):'$0'}</span></div>
+            <div class="kv" style="align-items:center"><span class="k">+ Legal / conveyancing <input type="number" value="${nextLegal}" onchange="setNextLegal(this.value)" style="width:84px;display:inline-block;padding:3px 6px;margin-left:6px;font-size:13px"></span><span class="v">${fmt(legalNext)}</span></div>
+            <div class="kv"><span class="k"><b>All-in cost to complete</b></span><span class="v" style="color:var(--navy)">${fmt(allIn)}</span></div>
+            <div class="kv"><span class="k">Funded by — cash + CPF (${fmt(row.hhFunds)}) + loan (${fmt(actualLoan)})</span><span class="v">${fmt(buyingPower)}</span></div>
+            <div class="kv"><span class="k">Cash + CPF left after completing the purchase</span><span class="v">${fmt(headroom)}</span></div>
+            <p style="font-size:12px;color:var(--ink);margin:8px 0 0">The <b>${fmt(bsdNext)}</b> stamp duty${legalNext>0?` + <b>${fmt(legalNext)}</b> legal`:''} is what trims ${exit.name}'s <b>${fmt(buyingPower)}</b> buying power down to a <b>${fmt(maxP)}</b> purchase price.</p>
+            ${row.stRemainingCash>0?`<p style="font-size:12px;color:var(--muted);margin:6px 0 0">Includes a ${fmt(row.stRemainingCash)} top-up from ${stay.name}'s leftover cash. On ${exit.name}'s own funds (no top-up), the budget is ${fmt(row.exBudgetOwn)}.</p>`:''}          </div>` : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px">Funds fall below the entry price for private property at this split.</div>`;
+  const ura="https://eservice.ura.gov.sg/property-market-information/pmiResidentialTransactionSearch";
+  const budgetTxt = maxP>0 ? fmt(maxP) : "Below private-property entry";
+  $('affordCard').innerHTML=`
+    <h3><span class="dot next"></span>Exiting Party — Sale Proceeds &amp; What ${exit.name} Can Buy Next <span style="font-weight:500;color:var(--muted);font-size:12px">(at the ${row.X}% share)</span></h3>
+    <div class="grid cols-2">
+      <div>
+        <p style="font-size:11.5px;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.5px">Sale proceeds for ${exit.name} (at ${row.X}% share)</p>
+        <div class="kv"><span class="k">Exiting Owner's Share (Gross)</span><span class="v">${fmt(grossSale)}</span></div>
+        <div class="kv"><span class="k">Less: Outstanding Loan (${exit.name}'s ${row.X}% Share)</span><span class="v">−${fmt(loanRedeem)}</span></div>
+        <div class="kv"><span class="k">Less: SSD</span><span class="v">${row.ssd>0?'−'+fmt(row.ssd):'—'}</span></div>
+        <div class="kv"><span class="k">Less: Legal Fee (${exit.name}'s Side)</span><span class="v">−${fmt(row.legalFee)}</span></div>
+        <div class="kv"><span class="k">Less: CPF + Accrued Interest Refunded</span><span class="v">−${fmt(row.cpfRefund)}</span></div>
+        <div class="kv"><span class="k"><b>Sale Proceeds — Cash in Hand</b>${row.exCashOut<0?' (must top up)':''}</span><span class="v ${row.exCashOut<0?'neg':''}" style="${row.exCashOut>=0?'color:var(--navy)':''}">${fmt(row.exCashOut)}</span></div>
+        <p class="hint" style="margin-top:6px">The ${fmt(row.cpfRefund)} CPF + accrued interest returns to ${exit.name}'s CPF account (usable for the next purchase, not cash in pocket).</p>
+      </div>
+      <div>
+        <p style="font-size:11.5px;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.5px">${exit.name}'s firepower for the next purchase</p>
+        <div class="kv"><span class="k">${exit.name}'s Cash Savings</span><span class="v">${fmt(exit.exCash)}</span></div>
+        ${row.borrowedFromEx>0?`<div class="kv"><span class="k">Less: Cash Used to Fund the Buyout</span><span class="v neg">−${fmt(row.borrowedFromEx)}</span></div>`:''}
+        ${row.stRemainingCash>0?`<div class="kv"><span class="k">Add: ${stay.name}'s Leftover Cash (Household)</span><span class="v">+${fmt(row.stRemainingCash)}</span></div>`:''}
+        <div class="kv"><span class="k"><b>${exit.name}'s Balance Cash on Hand</b></span><span class="v">${fmt(exit.exCash-row.borrowedFromEx+row.stRemainingCash)}</span></div>
+        <div class="kv"><span class="k">Add: Sale Proceeds (Cash)</span><span class="v ${row.exCashOut<0?'neg':''}">${fmt(row.exCashOut)}</span></div>
+        <div class="kv"><span class="k">Add: CPF OA Balance + Refunded CPF &amp; Accrued Interest</span><span class="v">${fmt(row.exCpfAvail)}</span></div>
+        <div class="kv"><span class="k"><b>Total Cash + CPF</b></span><span class="v">${fmt(row.hhFunds)}</span></div>
+        <div class="kv"><span class="k">Add: ${ltvBound?'Loan for This Purchase (75% of price)':'Max Loan (income-based, TDSR @ stress)'}</span><span class="v">${fmt(actualLoan)}</span></div>
+        <div class="kv"><span class="k"><b>Total Buying Power (Cash + CPF + Loan)</b></span><span class="v" style="color:var(--navy)">${fmt(buyingPower)}</span></div>
+        ${ltvBound?`<div style="font-size:11px;color:var(--ink);margin-top:6px;line-height:1.55;background:var(--warnbg);border:1px solid #eedcb6;border-radius:8px;padding:8px 10px">
+          <b style="color:var(--bad)">Why this isn't ${exit.pn.p} maximum loan:</b> the ${fmt(actualLoan)} above is the loan for <i>this</i> purchase — 75% of the price ${exit.name} can afford. ${exit.name}'s ${fmt(row.hhFunds)} of cash + CPF first has to cover the 25% downpayment, BSD and legal, and that is what sizes the price — so the 75% loan works out to ${fmt(actualLoan)}.
+          <br>${exit.name}'s income could actually support a bigger loan of <b>${fmt(exit.exMaxLoanTDSR)}</b>. To use it in full, ${exit.pn.s} would need a property of about <b>${fmt(priceFull)}</b> (still at 75% LTV)${fullLoanTopUp>0?`, topping up about <b>${fmt(fullLoanTopUp)}</b> more cash/CPF`:`, which ${exit.pn.p} current funds already cover`}.
+        </div>`:''}
+        <div style="background:var(--goodbg);border:1px solid #bfe3cf;border-radius:10px;padding:12px 14px;margin-top:12px">
+          <div style="font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Indicative budget</div>
+          <div style="font-size:24px;font-weight:700;color:var(--navy);margin:2px 0">${budgetTxt}</div>
+          <div style="font-size:13px;color:var(--ink)">${suggestType(maxP)}</div>
+          ${costBreak}
+        </div>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:12px">Compare this budget against the new-launch and resale price tables below.</p>`;
+}
+function renderIntent(exit,row){
+  const el=$('intentResult');
+  const P=exit.intendedPrice;
+  if(!P||P<=0){ el.innerHTML='<p class="hint">Enter an intended price above to see the cash top-up needed.</p>'; return; }
+  const duties=bsd(P)+absd(P,exit.exRes,exit.nextOnly);
+  const need=P+duties+(exit.legal||0);
+  const loan=Math.min(exit.exMaxLoanTDSR,0.75*P);
+  const topup=row.stRemainingCash||0;
+  const funds=row.exFunds+topup;                   // her cash + CPF + staying party's leftover cash top-up
+  const gap=Math.max(0,need-(loan+funds));
+  const surplus=Math.max(0,(loan+funds)-need);
+  const minCash=P*(exit.minCashPct/100);
+  const cashShort=Math.max(0,minCash-(row.exCashAvail+topup));
+  el.innerHTML=`
+    <div class="kv"><span class="k">Intended Price</span><span class="v">${fmt(P)}</span></div>
+    <div class="kv"><span class="k">BSD + ABSD</span><span class="v">${fmt(duties)}</span></div>
+    <div class="kv" style="align-items:center"><span class="k">Legal / conveyancing <input type="number" value="${nextLegal}" onchange="setNextLegal(this.value)" style="width:84px;display:inline-block;padding:3px 6px;margin-left:6px;font-size:13px"></span><span class="v">${fmt(exit.legal||0)}</span></div>
+    <div class="kv"><span class="k"><b>Total Funds Needed (Price + Stamp Duties + Legal)</b></span><span class="v" style="color:var(--navy)">${fmt(need)}</span></div>
+    <div class="kv"><span class="k">Loan Obtainable (Income / 75% LTV)</span><span class="v">${fmt(loan)}</span></div>
+    <div class="kv"><span class="k">${exit.name}'s Funds + ${G.stay.name}'s Cash Top-Up (${fmt(topup)})</span><span class="v">${fmt(funds)}</span></div>
+    <div style="background:${gap>0?'var(--badbg)':'var(--goodbg)'};border:1px solid ${gap>0?'#f0c6c0':'#bfe3cf'};border-radius:10px;padding:14px 16px;margin-top:10px">
+      <div style="font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${gap>0?'Cash top-up shortfall':'Fully funded'}</div>
+      <div style="font-size:24px;font-weight:700;color:${gap>0?'var(--bad)':'var(--good)'};margin:3px 0">${gap>0?fmt(gap):'Surplus '+fmt(surplus)}</div>
+      <div style="font-size:13px;color:var(--ink)">${gap>0?`${exit.name} must top up <b>${fmt(gap)}</b> in extra cash — beyond ${exit.pn.p} loan, sale proceeds and CPF — to complete this purchase.`:`${exit.name}'s loan + proceeds + CPF cover the ${fmt(need)} needed, with ${fmt(surplus)} to spare.`}</div>
+      ${cashShort>0?`<div style="font-size:12.5px;color:var(--bad);margin-top:6px">Plus a ${fmt(cashShort)} gap on the ${exit.minCashPct}% minimum-cash rule (CPF cannot cover that slice).</div>`:''}
+    </div>`;
+}
+function renderAdvisory(rec,reason,rows,sr,hold){
+  let html='<div class="note"><b>How to read this:</b> The table shows every percentage option. The recommended split is the smallest exiting share where the staying party can fund the buyout AND the exiting party still walks away cash-positive — the most prudent structure, with the lowest BSD and lowest cash outlay. Go to a larger exiting share only if they want more proceeds for the next purchase.</div>';
+  const C=rows[0].cpfRefund;
+  if(rec){
+    const neg=rec.exCashOut<0;
+    html+=`<div class="note"><b>Cash vs CPF at the recommended ${rec.X}% split.</b> The exiting party must refund <b>${fmt(rec.cpfRefund)}</b> of CPF + accrued interest in full; after that, SSD and legal, their cash sale proceeds are <b>${fmt(rec.exCashOut)}</b>${neg?' — <span style="color:var(--bad);font-weight:700">NEGATIVE: they must top up cash to refund their own CPF</span>':''}. Going into the next purchase they hold roughly <b>${fmt(rec.exCashAvail)} cash + ${fmt(rec.exCpfAvail)} CPF</b>. The 5% minimum down-payment must come from the cash bucket — that is why a thin split can fail even when total funds look sufficient.</div>`;
+  }
+  if(C>0){
+    html+=`<div class="note" style="border-left-color:var(--bad)"><b>The CPF trap (why 1/99 can backfire).</b> The exiting party's <b>${fmt(C)}</b> CPF + accrued interest must be refunded in full <b>no matter how small their share</b>. A 1% share returns almost no equity but still triggers the full refund — so at thin splits they may have to <b>top up cash to refund their own CPF</b> and walk away cash-poor. The split must give them enough equity to cover their CPF refund and still fund the next purchase.</div>`;
+  }
+  if(sr>0){
+    html+=`<div class="note" style="border-left-color:var(--bad)"><b>Timing warning:</b> At ${hold} year(s) held, decoupling still triggers SSD of ${(sr*100)}% on the transferred share — a pure cost with no benefit. Where possible, time the decoupling past the SSD window (4 years for purchases from 4 Jul 2025) to wipe this out entirely.</div>`;
+  }
+  html+='<div class="note"><b>Advisor\'s next step:</b> Lock the split at purchase via the Option / S&amp;P as tenants-in-common — changing it afterwards is costly and rarely worth it. Re-run this with your client\'s real numbers and a conservative value-at-decoupling before signing.</div>';
+  $('advisory').innerHTML=html;
+}
+// money inputs: live thousands separators (commas) for easy reading
+const MONEY=['propVal','valPrice','propLoan','loanOrig','exIncome','exDebt','exCash','exCpf','exCpfRefund100','cpfLump','cpfIncome','cpfMonthly','bdManual','intendedPrice','stIncome','stDebt','stCash','stCpf','legal','psVal','psLoan','psExCpf','psExCash','psExCpfBal','psExInc','psExDebt','psStLegal','psStOther','psPenalty','psExLegal','psExOther'];
+function addCommas(s){s=String(s).replace(/[^0-9]/g,'');return s?parseInt(s,10).toLocaleString('en-SG'):'';}
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.style.display='none');
+  const target=$('view-'+v); if(target) target.style.display='block';
+  const meta={
+    home:['Decoupling Advisory','Two tools in one — <b>pre-advisory</b> to plan the ownership split before you commit, and <b>post-advisory</b> for the actual part-share purchase.'],
+    structuring:['Decoupling Structuring Calculator <span class="tag pre" style="vertical-align:middle">Pre-Advisory</span>','Decide the ownership split <b>before</b> you commit. "1% / 99%" minimises stamp duty on the future buyout — but it can leave the exiting party with too little cash to buy again, or the staying party unable to hold the property alone. This tool finds the <b>smallest split that actually works for both parties</b>, and shows the cash outlay at every option.'],
+    partshare:['Decoupling / Part-Share Purchase <span class="tag post" style="vertical-align:middle">Post-Advisory</span>','Work out the actual part-share purchase once the split is decided.']
+  };
+  if(meta[v]){ const t=$('pageTitle'), s=$('pageSub'); if(t)t.innerHTML=meta[v][0]; if(s)s.innerHTML=meta[v][1]; }
+  window.scrollTo(0,0);
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  MONEY.forEach(id=>{const el=$(id);if(!el)return;
+    el.type='text';el.setAttribute('inputmode','numeric');el.value=addCommas(el.value);
+    el.addEventListener('input',()=>{const len=el.value.length,start=el.selectionStart;el.value=addCommas(el.value);
+      const pos=Math.max(0,el.value.length-(len-start));el.setSelectionRange(pos,pos);});
+  });
+  restoreState();                                   // bring back previously entered figures
+  try{ loanModeUI(); cpfModeUI(); bdModeUI(); refreshOA(); syncLoanOrig(); costsAtPurchase(); reproject(); if($('psVal')) psCompute(); }catch(e){}
+  document.addEventListener('input',saveState);     // auto-save on every edit
+  document.addEventListener('change',saveState);
+  showView('home');
+});
+</script>
+</body>
+</html>
