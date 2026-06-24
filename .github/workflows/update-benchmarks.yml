@@ -1,4 +1,4 @@
-yamlname: Update URA benchmarks
+name: Update URA benchmarks
 
 on:
   schedule:
