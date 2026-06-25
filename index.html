@@ -205,6 +205,34 @@
     <button class="backbtn" type="button" onclick="resetAll()">↺ Reset All</button>
   </div>
 
+  <details class="assump" style="margin-top:10px;background:#fff7e6;border-color:#eedcb6">
+    <summary>Not sure who should be the staying vs exiting party? Tap for guidance →</summary>
+    <div style="padding:6px 2px 4px;font-size:13px;line-height:1.6;color:var(--ink)">
+      <p style="margin:0 0 8px">Decoupling frees up <b>one</b> person's name so they can buy the next property as a "first" purchase. Use these to decide the roles:</p>
+      <div class="cpfhdr" style="margin-top:6px">Exiting party — sells their share &amp; buys next</div>
+      <ul style="margin:6px 0 10px;padding-left:18px">
+        <li><b>The one who plans to buy the next property</b> — decoupling clears their name for a fresh purchase.</li>
+        <li><b>Ideally a Singapore Citizen</b> — their next home is then treated as a first property (0% ABSD). A PR pays 5%, a foreigner 60% — so if only one party is a Citizen, that person usually exits.</li>
+        <li><b>Strong income &amp; younger age</b> — needed to qualify for the new loan (TDSR; and age + tenure ≤ 65 for maximum leverage).</li>
+        <li>Frees up useful <b>cash + CPF</b> for the next down payment.</li>
+      </ul>
+      <div class="cpfhdr">Staying party — keeps the property &amp; takes over the full loan</div>
+      <ul style="margin:6px 0 10px;padding-left:18px">
+        <li><b>Must qualify for and afford the FULL outstanding loan on their own</b> — their income has to pass TDSR on the restructured loan. This is the hard gate.</li>
+        <li><b>Ideally younger</b>, so the restructured loan can run a longer tenure — lower instalment, easier to qualify.</li>
+        <li><b>Wants to keep this property</b> (to live in or hold).</li>
+        <li>Has enough <b>cash + CPF</b> to fund the buyout (the exiting party's share + stamp duty).</li>
+      </ul>
+      <div class="cpfhdr">Quick rule of thumb</div>
+      <ol style="margin:6px 0 10px;padding-left:18px">
+        <li>Who will buy next? → usually the <b>exiting</b> party.</li>
+        <li>Can the other party hold the loan alone? If not, swap the roles — or decoupling won't work.</li>
+        <li>If only one is a Citizen, the <b>Citizen usually exits</b> to avoid ABSD on the next purchase.</li>
+      </ol>
+      <p class="hint" style="margin:0">Watch-out: if the intended staying party can't service the full loan on their own income, the decoupling fails — reconsider the roles, or whether to decouple at all.</p>
+    </div>
+  </details>
+
   <!-- ================= INPUTS ================= -->
   <h2 class="section">1 · The Property (Estimated, at Decoupling)</h2>
   <p style="font-size:12px;color:#b9791a;margin:0 0 12px;font-style:italic">All figures below are <b>estimated/projected as at the planned decoupling date</b> (e.g. in 4 years' time) — value, outstanding loan and interest rate are forward assumptions, not today's.</p>
@@ -1187,7 +1215,7 @@ function restoreState(){
   try{ const raw=localStorage.getItem(STORE_KEY); if(!raw) return; const d=JSON.parse(raw);
     Object.keys(d).forEach(id=>{ const el=$(id); if(el!=null && d[id]!=null) el.value=d[id]; }); }catch(e){}
 }
-function resetAll(){ if(confirm('Clear all figures and start over? Every field resets to default.')){ try{localStorage.removeItem(STORE_KEY);}catch(e){} location.reload(); } }
+function resetAll(){ if(confirm('Clear all figures on this page? Every field resets to its default.')){ try{localStorage.removeItem(STORE_KEY); localStorage.setItem(STORE_KEY+'_view', CURRENT_VIEW);}catch(e){} location.reload(); } }
 function estValue(){
   const P=n($('valPrice').value), c=(n($('valCAGR').value)||0)/100, y=n($('holdYears').value)||0;
   if(P<=0){ $('valEstOut').textContent='Enter the purchase price first.'; return; }
@@ -1523,7 +1551,9 @@ function renderAdvisory(rec,reason,rows,sr,hold){
 // money inputs: live thousands separators (commas) for easy reading
 const MONEY=['propVal','valPrice','propLoan','loanOrig','exIncome','exDebt','exCash','exCpf','exCpfRefund100','cpfLump','cpfIncome','cpfMonthly','bdManual','intendedPrice','stIncome','stDebt','stCash','stCpf','legal','psVal','psLoan','psExCpf','psExCash','psExCpfBal','psExInc','psExDebt','psStLegal','psStOther','psPenalty','psExLegal','psExOther'];
 function addCommas(s){s=String(s).replace(/[^0-9]/g,'');return s?parseInt(s,10).toLocaleString('en-SG'):'';}
+let CURRENT_VIEW='home';
 function showView(v){
+  CURRENT_VIEW=v;
   document.querySelectorAll('.view').forEach(el=>el.style.display='none');
   const target=$('view-'+v); if(target) target.style.display='block';
   const meta={
@@ -1544,7 +1574,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   try{ loanModeUI(); cpfModeUI(); bdModeUI(); refreshOA(); syncLoanOrig(); costsAtPurchase(); reproject(); if($('psVal')) psCompute(); }catch(e){}
   document.addEventListener('input',saveState);     // auto-save on every edit
   document.addEventListener('change',saveState);
-  showView('home');
+  let startView='home';
+  try{ const rv=localStorage.getItem(STORE_KEY+'_view'); if(rv){ startView=rv; localStorage.removeItem(STORE_KEY+'_view'); } }catch(e){}
+  showView(startView);
 });
 </script>
 </body>
