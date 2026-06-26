@@ -962,11 +962,11 @@ function detailBlock(row){
   let body;
   if(same){
     if(rec.exCashOut<0){
-      body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> This split is recommended because it needs the <b>least real cash</b> from the household. ${exit.name}'s sale does not fully cover ${exit.pn.p} CPF refund, so ${exit.pn.s} tops up <b>${fmt(-rec.exCashOut)}</b> in cash — but that money goes straight back into ${exit.pn.p} own CPF (recoverable, and usable for the next purchase). ${(rec.stOutlay-rec.stCashUsed)>1?`${stay.name} funds part of the buyout from CPF, keeping out-of-pocket cash low.`:`${stay.name} pays the buyout in cash (no CPF available to deploy).`}</p>
+      body=`<p style="margin:0 0 8px"><b>The trade-off in detail.</b> ${exit.name}'s sale does not fully cover ${exit.pn.p} CPF refund, so ${exit.pn.s} tops up <b>${fmt(-rec.exCashOut)}</b> in cash — but that money goes straight back into ${exit.pn.p} own CPF (recoverable, and usable for the next purchase).</p>
       <p style="margin:0 0 8px"><b>A larger ${exit.name} share</b> would let ${exit.pn.o} avoid the top-up, but only by making ${stay.name} put in more cash and a bigger loan — more total real cash and more stamp duty. <b>A smaller share</b> is cheaper on duty but forces an even bigger cash top-up from ${exit.name}.</p>
       <p style="margin:0"><b>Watch-out:</b> ${exit.name} must have the <b>${fmt(-rec.exCashOut)}</b> cash ready at completion to refund the CPF, and still keep 5% cash for the next purchase.</p>`;
     } else {
-    body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> A <i>smaller</i> exiting share saves stamp duty, but moves less of the home's equity to ${exit.name} — so ${exit.pn.s} has less for ${exit.pn.p} next property, and below ${rec.X}% ${exit.pn.p} share frees up less equity than ${exit.pn.p} CPF refund requires, so ${exit.pn.s} would need to top up cash. A <i>larger</i> share gives ${exit.pn.o} more equity and budget, but costs more stamp duty and a bigger loan for ${stay.name}. <b>${rec.X}% is the sweet spot</b> — it is the smallest share where the sale still covers ${exit.pn.p} CPF refund, so ${exit.pn.s} does not have to pay any cash out of ${exit.pn.p} own pocket, while keeping the stamp duty as low as possible.</p>
+    body=`<p style="margin:0 0 8px"><b>The trade-off in detail.</b> A <i>smaller</i> exiting share saves stamp duty, but moves less of the home's equity to ${exit.name} — so ${exit.pn.s} has less for ${exit.pn.p} next property, and below ${rec.X}% ${exit.pn.p} share frees up less equity than ${exit.pn.p} CPF refund requires, so ${exit.pn.s} would need to top up cash. A <i>larger</i> share gives ${exit.pn.o} more equity and budget, but costs more stamp duty and a bigger loan for ${stay.name}. <b>${rec.X}% is the sweet spot</b> — it is the smallest share where the sale still covers ${exit.pn.p} CPF refund, so ${exit.pn.s} does not have to pay any cash out of ${exit.pn.p} own pocket, while keeping the stamp duty as low as possible.</p>
       <p style="margin:0 0 8px"><b>If the couple pools money:</b> any cash ${exit.name} would need to top up at a smaller share is not lost — it goes back into ${exit.pn.p} CPF and funds ${exit.pn.p} next purchase. So a smaller, cheaper share can still work if ${exit.pn.s} is not planning to spend much on ${exit.pn.p} next home; pick ${rec.X}% or higher when ${exit.pn.s} wants the most buying power for the next property.</p>
       <p style="margin:0"><b>Watch-out:</b> 5% of the next purchase must be paid in <i>cash</i> (CPF cannot). Smaller shares turn ${exit.pn.p} cash into CPF, so check ${exit.pn.p} leftover cash still clears that 5% — ${rec.X}% keeps more cash in ${exit.pn.p} hand.</p>`;
     }
@@ -1019,9 +1019,9 @@ function renderCompare(row){
     }
     whyNote=`<div class="note" style="border-left-color:var(--warn)"><b>Why ${100-row.X}% / ${row.X}% is not the pick</b> — compared with the recommended ${100-rec.X}% / ${rec.X}%:<ul style="margin:6px 0 0;padding-left:18px;line-height:1.5">${pts}</ul></div>`;
   }
-  el.innerHTML = detailBlock(row)
-    + `<button class="detail-toggle" type="button" onclick="toggleDetail()" style="background:#f3f4f6;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;margin:10px 0 0;color:var(--navy)">Show detailed analysis ▾</button>`
-    + `<div class="detail-extra" style="display:none;margin-top:10px">${whyNote}</div>`;
+  el.innerHTML = whyNote
+    + detailBlock(row)
+    + `<button class="detail-toggle" type="button" onclick="toggleDetail()" style="background:#f3f4f6;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;margin:10px 0 0;color:var(--navy)">Show detailed analysis ▾</button>`;
 }
 // ===== POST-ADVISORY · Part-Share Purchase (today's actuals, live compute) =====
 function psAbsd(v,res,hold){            // ABSD by residency & number of properties held (rates current 2026)
