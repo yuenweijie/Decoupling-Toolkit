@@ -438,7 +438,9 @@
 
   <div class="btnrow">
     <button class="calc" onclick="run()">Calculate &amp; Recommend Split</button>
+    <button class="ghost" type="button" onclick="swapParties()" style="margin-left:10px">⇄ Swap staying ⇄ exiting</button>
   </div>
+  <p class="hint" style="margin:6px 2px 0"><b>⇄ Swap</b> flips the two parties' roles (income, CPF, cash, age, residency swap automatically). The tool only recommends a swap when the other person is the better staying party — if a swap is not advisable, it warns you first.</p>
 
   <!-- ================= RESULTS ================= -->
   <div id="results">
@@ -833,11 +835,11 @@ function run(){
 
   const stay={stMaxLoan,L,V,E,stLiquidity,stLtvCap,actualRate,stress,tdsr,stAge,stInc,stDebt,partLoanPct,minCashPct,stRes,stTenure,name:stName,pn:pn(stGender)};
   const exit={exMaxLoanTDSR,exAge,nextOnly,exRes,sr,hold,V,L,minCashPct,intendedPrice,name:exName,exCash,legal:nextLegal,pn:pn(exGender)};
-  G={rows,stay,exit,rec,reason:recReason};
-  const roleHTML=assessRoles({stName,exName,stInc,stDebt,stAge,stCash,stCpf,stCpfUsed:stCpfR100,stRes,exInc,exDebt,exAge,exCash,exRes,exCpfR100,L,stress,tdsr});
+  G={rows,stay,exit,rec,reason:recReason,cashKnown,activeBudget:(rec||rows[0]).exBudget};
+  const role=assessRoles({stName,exName,stInc,stDebt,stAge,stCash,stCpf,stCpfUsed:stCpfR100,stRes,exInc,exDebt,exAge,exCash,exRes,exCpfR100,L,stress,tdsr}); G.role=role;
   renderReco(rec,recReason,rows,stay,exit);
   renderTable(rows,rec);
-  renderLogicPanel(rec,recReason,rows,stay,exit,roleHTML);
+  renderLogicPanel(rec,recReason,rows,stay,exit,role.html);
   reproject();
   renderAdvisory(rec,recReason,rows,sr,hold);
   const wasHidden=$('results').style.display!=='block';
@@ -854,13 +856,13 @@ function assessRoles(a){
   const altCarry=a.exAge>0&&a.exAge<65&&capAlt>=a.L-1;
   const curAbsd=absdNext(a.exRes), altAbsd=absdNext(a.stRes);
   const stCpfU=a.stCpfUsed||0, exCpfU=a.exCpfR100||0, haveCpf=(stCpfU>0||exCpfU>0);
-  let verdict,tone,lines=[];
+  let verdict,tone,swap=false,note='',lines=[];
   if(a.L>0 && !curCarry && altCarry){
-    verdict=`Consider swapping — ${a.exName} should be the staying party.`; tone='var(--bad)';
-    lines.push(`<b>Loan-carry (the hard gate):</b> ${a.stName} cannot take over the full ${fmt(a.L)} loan alone (income supports ≈ ${fmt(capCur)}${a.stAge>=65?', and age leaves little/no tenure':''}), but ${a.exName} can (≈ ${fmt(capAlt)}). The staying party must carry the whole loan, so ${a.exName} is the natural stayer.`);
+    verdict=`Consider swapping — ${a.exName} should be the staying party.`; tone='var(--bad)'; swap=true; note=`${a.exName} can carry the full ${fmt(a.L)} loan but ${a.stName} cannot, so ${a.exName} should be the staying party.`;
+    lines.push(`<b>Loan-carry (the hard gate):</b> ${a.stName} cannot take over the full ${fmt(a.L)} loan alone (income supports ≈ ${fmt(capCur)}${a.stAge>=65?', and age leaves little or no tenure':''}), but ${a.exName} can (≈ ${fmt(capAlt)}). The staying party must carry the whole loan, so ${a.exName} is the natural stayer.`);
   } else if(a.L>0 && !curCarry && !altCarry){
-    verdict=`Neither party can take over the full loan alone — structural issue.`; tone='var(--bad)';
-    lines.push(`<b>Loan-carry:</b> the full ${fmt(a.L)} loan exceeds what either income supports on its own (${a.stName} ≈ ${fmt(capCur)}, ${a.exName} ≈ ${fmt(capAlt)}). Fix one of: higher income, pay down the loan first, a longer tenure (younger party), or reconsider timing.`);
+    verdict=`Neither party can take over the full loan alone — structural issue.`; tone='var(--bad)'; note=`Neither party can carry the full ${fmt(a.L)} loan alone, so swapping the roles will not fix it.`;
+    lines.push(`<b>Loan-carry:</b> the full ${fmt(a.L)} loan exceeds what either income supports on its own (${a.stName} ≈ ${fmt(capCur)}, ${a.exName} ≈ ${fmt(capAlt)}). Options: raise income, pay down the loan first, lengthen the tenure (younger party), or reconsider the timing.`);
   } else {
     if(a.L>0) lines.push(`<b>Loan-carry (the hard gate):</b> ${a.stName} can take over the full ${fmt(a.L)} loan (income supports ≈ ${fmt(capCur)}).${altCarry?` ${a.exName} could also carry it (≈ ${fmt(capAlt)}).`:` ${a.exName} could not (≈ ${fmt(capAlt)}), so the roles cannot simply swap.`}`);
     let swapAbsd=false, swapCpf=false;
@@ -871,7 +873,7 @@ function assessRoles(a){
     }
     if(haveCpf){
       if(exCpfU>stCpfU*1.2 && (exCpfU-stCpfU)>50000){
-        lines.push(`<b>CPF used:</b> ${a.exName} used <b>more</b> CPF (${fmt(exCpfU)}) than ${a.stName} (${fmt(stCpfU)}). The exiting party must refund their CPF in full, so the heavier-CPF party is better kept as the <i>staying</i> party to avoid a big cash top-up.${altCarry?` Since ${a.exName} can also carry the loan, a swap is worth considering.`:` But ${a.exName} cannot carry the loan, so instead lean to a larger exiting share so the sale covers the refund.`}`);
+        lines.push(`<b>CPF used:</b> ${a.exName} used <b>more</b> CPF (${fmt(exCpfU)}) than ${a.stName} (${fmt(stCpfU)}). The exiting party must refund their CPF in full, so the heavier-CPF party is better kept as the <i>staying</i> party to avoid a big cash top-up.${altCarry?` Since ${a.exName} can also carry the loan, a swap is worth considering.`:` But ${a.exName} cannot carry the loan, so instead use a larger exiting share — big enough that the sale itself covers the refund.`}`);
         if(altCarry) swapCpf=true;
       } else if(stCpfU>exCpfU*1.2 && (stCpfU-exCpfU)>50000){
         lines.push(`<b>CPF used:</b> ${a.stName} used more CPF (${fmt(stCpfU)}) than ${a.exName} (${fmt(exCpfU)}) — good: the heavier-CPF party is already staying, so only the smaller refund (${fmt(exCpfU)}) falls on ${a.exName}. CPF-efficient as is.`);
@@ -881,11 +883,12 @@ function assessRoles(a){
     } else {
       lines.push(`<b>CPF used:</b> enter both parties' CPF used (the staying-party field is in Section 3) to judge who should stay on CPF grounds.`);
     }
-    if(swapAbsd||swapCpf){ verdict=`Roles work — but a swap may be better (${swapAbsd&&swapCpf?'ABSD + CPF':swapAbsd?'ABSD':'CPF'}).`; tone='var(--warn)'; }
-    else { verdict=`Current roles are appropriate.`; tone='var(--good)'; }
+    if(swapAbsd||swapCpf){ verdict=`Roles work — but a swap may be better (${swapAbsd&&swapCpf?'ABSD + CPF':swapAbsd?'ABSD':'CPF'}).`; tone='var(--warn)'; swap=true; note=`Both parties can carry the loan, and a swap is better on ${swapAbsd&&swapCpf?'ABSD and CPF':swapAbsd?'ABSD':'CPF'} grounds.`; }
+    else { verdict=`Current roles are appropriate.`; tone='var(--good)'; note=`${a.stName} can carry the loan and ${a.exName} is the next buyer — the current roles are already the prudent setup.`; }
   }
   lines.push(`<b>Cash check:</b> ${a.stName} needs cash/CPF for the buyout; ${a.exName} needs cash for any CPF top-up plus the next downpayment (5% must be cash). Pooled cash entered: ${fmt((a.stCash||0)+(a.exCash||0))}.`);
-  return `<div class="note" style="border-left-color:${tone}"><b>Should ${a.stName} stay and ${a.exName} exit? — ${verdict}</b><ul style="margin:6px 0 0;padding-left:18px;line-height:1.6">${lines.map(l=>`<li>${l}</li>`).join('')}</ul><p class="hint" style="margin:6px 0 0">Assessed on income, age/tenure (loan-carry), residency (ABSD), CPF used and cash on hand.</p></div>`;
+  const html=`<div class="note" style="border-left-color:${tone}"><b>Should ${a.stName} stay and ${a.exName} exit? — ${verdict}</b><ul style="margin:6px 0 0;padding-left:18px;line-height:1.6">${lines.map(l=>`<li>${l}</li>`).join('')}</ul><p class="hint" style="margin:6px 0 0">Assessed on income, age/tenure (loan-carry), residency (ABSD), CPF used and cash on hand.</p></div>`;
+  return {verdict, tone, html, swap, note};
 }
 function renderLogicPanel(rec,reason,rows,stay,exit,roleHTML){
   const el=$('logicPanel'); if(!el) return;
@@ -894,7 +897,7 @@ function renderLogicPanel(rec,reason,rows,stay,exit,roleHTML){
     const exTop = rec.exCashOut<0?fmt(-rec.exCashOut):'$0';
     logic=`<div class="note" style="border-left-color:#6938c4"><b>How the recommended split is chosen — lowest real cash for the household</b>
       <p style="margin:6px 0 0;line-height:1.6">A buyout is funded from two different pockets: <b>CPF</b> (already locked away for property/retirement) and <b>cash</b> (spendable). The tool ranks every split by the <b>real cash</b> the household must actually produce — it does <i>not</i> count CPF the staying party deploys, because that money was never spendable cash in the first place.</p>
-      <p style="margin:8px 0 0;line-height:1.6"><b>Real cash needed = ${stay.name}'s cash (excluding CPF) + ${exit.name}'s cash top-up to refund CPF.</b> At the recommended <b>${100-rec.X}% / ${rec.X}%</b>: ${stay.name} puts in <b>${fmt(rec.stCashUsed)}</b> cash (the rest of the ${fmt(rec.stOutlay)} outlay is paid from CPF), and ${exit.name} ${rec.exCashOut<0?`tops up <b>${exTop}</b> into ${exit.pn.p} own CPF`:`needs no cash top-up`} — total real cash <b>${fmt(rec.realHouseholdCash)}</b>, the lowest of all workable splits, while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> next-purchase budget.</p>
+      <p style="margin:8px 0 0;line-height:1.6"><b>Real cash needed = ${stay.name}'s cash (excluding CPF) + ${exit.name}'s cash top-up to refund CPF.</b> At the recommended <b>${100-rec.X}% / ${rec.X}%</b>: ${stay.name} puts in <b>${fmt(rec.stCashUsed)}</b> cash (${(rec.stOutlay-rec.stCashUsed)>1?`the remaining ${fmt(rec.stOutlay-rec.stCashUsed)} of the ${fmt(rec.stOutlay)} outlay is paid from CPF`:`no CPF deployed — the whole ${fmt(rec.stOutlay)} is cash`}), and ${exit.name} ${rec.exCashOut<0?`tops up <b>${exTop}</b> into ${exit.pn.p} own CPF`:`needs no cash top-up`} — total real cash <b>${fmt(rec.realHouseholdCash)}</b>, the lowest of all workable splits, while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> next-purchase budget.</p>
       <p style="margin:8px 0 0;line-height:1.6"><b>Why this can beat a smaller (cheaper-duty) share:</b> a smaller exiting share cuts stamp duty and ${stay.name}'s outlay, but forces ${exit.name} to top up more <i>cash</i> to refund CPF. If ${stay.name} is CPF-rich, paying the bigger share from CPF keeps real cash lower than that top-up — so the larger, cash-positive share wins. If ${stay.name} has little CPF, the opposite holds and a smaller share is picked. The table's <b>Real Cash Needed</b> column shows this comparison for every split.</p></div>`;
   }
   el.innerHTML=(roleHTML||'')+logic;
@@ -907,8 +910,8 @@ function renderReco(rec,reason,rows,stay,exit){
     if(reason==='leastcash'){
       tag = 'Recommended split — lowest real cash for the household';
       const topup = rec.exCashOut<0 ? fmt(-rec.exCashOut) : null;
-      body = `This split needs the <b>least real cash</b> from the household: <b>${fmt(rec.realHouseholdCash)}</b> — ${stay.name}'s cash ${fmt(rec.stCashUsed)} plus ${exit.name}'s CPF top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}. ${stay.name}'s CPF funds the rest of the ${fmt(rec.stOutlay)} buyout, so it is not counted as out-of-pocket cash. ${exit.name}'s next-purchase budget is <b>${fmt(rec.exBudget)}</b>.`
-        + (rec.exCashOut<0 ? ` ${exit.pn.P} cash proceeds show −${topup}, but that top-up returns into ${exit.pn.p} own CPF (recoverable, and usable for the next home) and the household has the cash to cover it.` : ` ${exit.pn.S} also walks away cash-positive.`);
+      body = `This split needs the <b>least real cash</b> from the household: <b>${fmt(rec.realHouseholdCash)}</b> — ${stay.name}'s cash ${fmt(rec.stCashUsed)} plus ${exit.name}'s CPF top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}. ${(rec.stOutlay-rec.stCashUsed)>1?`${stay.name}'s CPF covers the remaining ${fmt(rec.stOutlay-rec.stCashUsed)} of the ${fmt(rec.stOutlay)} buyout, so that part is not out-of-pocket cash.`:`${stay.name} has no spare CPF to deploy here, so the full ${fmt(rec.stOutlay)} buyout is paid in cash.`} ${exit.name}'s next-purchase budget is <b>${fmt(rec.exBudget)}</b>.`
+        + (rec.exCashOut<0 ? ` ${exit.pn.P} cash proceeds show −${topup}, but that top-up goes back into ${exit.pn.p} own CPF (recoverable, and usable for the next home) and the household has the cash to cover it.` : ` ${exit.pn.S} also walks away cash-positive.`);
     } else if(reason==='bestfundable'){
       tag = 'Recommended split — best available for both';
       const topup = rec.exCashOut<0 ? fmt(-rec.exCashOut) : null;
@@ -925,7 +928,8 @@ function renderReco(rec,reason,rows,stay,exit){
     }
     el.innerHTML=`<div class="tag">${tag}</div>
       <h2>${stay.name} ${100-rec.X}% <span>/</span> ${exit.name} ${rec.X}%</h2>
-      <p>${body} Every percentage option is in the table below.</p>`;
+      <p>${body} Every percentage option is in the table below.</p>
+      ${G&&G.role?`<div style="margin-top:12px;padding:9px 12px;border-radius:8px;background:rgba(255,255,255,.6);border-left:4px solid ${G.role.tone};font-size:13px;color:var(--ink);line-height:1.5"><b>Stay / exit roles:</b> ${G.role.verdict}${G.role.swap?` <b style="color:var(--bad)">→ click ⇄ Swap to apply.</b>`:''} <span style="color:var(--muted)">Full check below.</span></div>`:''}`;
     return;
   }
   el.className='reco warn';
@@ -936,7 +940,7 @@ function renderReco(rec,reason,rows,stay,exit){
   } else {
     msg=`At every split — even 50% — the exiting party's CPF + accrued interest (${fmt(rows[0].cpfRefund)}) exceeds their share of equity, so they would have to top up cash just to refund their own CPF. They need a larger share than 50%, a lower CPF amount used, or to reconsider the timing of decoupling.`;
   }
-  el.innerHTML=`<div class="tag">Recommendation</div><h2 style="font-size:22px">No clean split — structural gap</h2><p>${msg}</p>`;
+  el.innerHTML=`<div class="tag">Recommendation</div><h2 style="font-size:22px">No clean split — structural gap</h2><p>${msg}</p>${G&&G.role?`<div style="margin-top:12px;padding:9px 12px;border-radius:8px;background:rgba(255,255,255,.6);border-left:4px solid ${G.role.tone};font-size:13px;color:var(--ink);line-height:1.5"><b>Stay / exit roles:</b> ${G.role.verdict}${G.role.swap?` <b style="color:var(--bad)">→ click ⇄ Swap to apply.</b>`:''} <span style="color:var(--muted)">Full check below.</span></div>`:''}`;
 }
 
 function selectSplit(X){
@@ -948,6 +952,7 @@ function selectSplit(X){
   renderStayMin(G.stay,row);
   renderAfford(G.stay,G.exit,row);
   renderIntent(G.exit,row);
+  G.activeBudget=row.exBudget; reproject();
 }
 function detailBlock(row){
   const rec=G.rec, stay=G.stay, exit=G.exit; if(!rec) return '';
@@ -955,7 +960,7 @@ function detailBlock(row){
   let body;
   if(same){
     if(rec.exCashOut<0){
-      body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> This split is recommended because it needs the <b>least real cash</b> from the household. ${exit.name}'s sale does not fully cover ${exit.pn.p} CPF refund, so ${exit.pn.s} tops up <b>${fmt(-rec.exCashOut)}</b> in cash — but that money goes straight back into ${exit.pn.p} own CPF (recoverable, and usable for the next purchase). ${stay.name} funds most of the buyout from CPF, keeping out-of-pocket cash low.</p>
+      body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> This split is recommended because it needs the <b>least real cash</b> from the household. ${exit.name}'s sale does not fully cover ${exit.pn.p} CPF refund, so ${exit.pn.s} tops up <b>${fmt(-rec.exCashOut)}</b> in cash — but that money goes straight back into ${exit.pn.p} own CPF (recoverable, and usable for the next purchase). ${(rec.stOutlay-rec.stCashUsed)>1?`${stay.name} funds part of the buyout from CPF, keeping out-of-pocket cash low.`:`${stay.name} pays the buyout in cash (no CPF available to deploy).`}</p>
       <p style="margin:0 0 8px"><b>A larger ${exit.name} share</b> would let ${exit.pn.o} avoid the top-up, but only by making ${stay.name} put in more cash and a bigger loan — more total real cash and more stamp duty. <b>A smaller share</b> is cheaper on duty but forces an even bigger cash top-up from ${exit.name}.</p>
       <p style="margin:0"><b>Watch-out:</b> ${exit.name} must have the <b>${fmt(-rec.exCashOut)}</b> cash ready at completion to refund the CPF, and still keep 5% cash for the next purchase.</p>`;
     } else {
@@ -979,7 +984,7 @@ function renderCompare(row){
   if(!rec){ el.innerHTML=''; return; }
   if(row.X===rec.X){
     if(G.reason==='leastcash'){
-      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Among all workable splits this needs the <b>least real cash</b> from the household — <b>${fmt(rec.realHouseholdCash)}</b> (${stay.name}'s cash ${fmt(rec.stCashUsed)} + ${exit.name}'s top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}) — while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> budget. ${stay.name}'s CPF covers the rest of the buyout, so it is not counted as cash.${detailBlock(row)}</div>`;
+      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Among all workable splits this needs the <b>least real cash</b> from the household — <b>${fmt(rec.realHouseholdCash)}</b> (${stay.name}'s cash ${fmt(rec.stCashUsed)} + ${exit.name}'s top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}) — while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> budget. ${(rec.stOutlay-rec.stCashUsed)>1?`${stay.name}'s CPF covers the rest of the buyout, so it is not counted as cash.`:`${stay.name} used no CPF here, so the buyout is fully in cash.`}${detailBlock(row)}</div>`;
       return;
     }
     const prev=rec.X<=1?null:G.rows.filter(r=>r.X<rec.X).pop();   // next-smaller exiting share
@@ -1189,24 +1194,30 @@ function psTimeline(){
   <div style="display:flex;gap:18px;margin-top:12px;font-size:11.5px;color:var(--muted)"><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#c0392b;margin-right:5px;vertical-align:middle"></span>Decoupling (above the line)</span><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#6938c4;margin-right:5px;vertical-align:middle"></span>${exN}'s onward purchase (below the line)</span></div>
   <div class="pinkbox" style="background:#eef9f4;border-color:#bfe3cf;color:var(--navy);margin-top:10px">⏱ Key rule: ${exN} can <b>exercise</b> the new OTP from <b>${f(dEx)}</b>, but the new purchase <b>completion must be on/after ${f(nComp)}</b> — at least <b>3 weeks after</b> the decoupling completion (${f(dComp)}). The CPF refund isn't instant: the law firm has to write to CPF to release the money, which takes a few days to weeks.</div>`;
 }
-function renderBedMatrix(data, bodyId, sub, dotColor, cagr, yrs){
+function renderBedMatrix(data, bodyId, sub, dotColor, cagr, yrs, budget){
   const el=$(bodyId); if(!el) return;
   if(!data){ el.innerHTML=''; return; }
-  cagr=cagr||0; yrs=yrs||0;
+  cagr=cagr||0; yrs=yrs||0; budget=budget||0;
   const f=Math.pow(1+cagr/100,yrs);
   const beds=["1BR","2BR","3BR","4BR"];
-  const cell=c=>(c&&c.p)?`<b style="color:${dotColor||'var(--navy)'}">${fmt(Math.round(c.p*f))}</b><div style="font-size:10px;color:var(--muted)">today ${fmt(c.p)}</div>`:'—';
+  const cell=c=>{
+    if(!(c&&c.p)) return '—';
+    const proj=Math.round(c.p*f);
+    const fits=budget>0 && proj<=budget;
+    return `<div style="${fits?'background:var(--goodbg);border:1px solid #bfe3cf;border-radius:6px;padding:3px 4px':''}"><b style="color:${dotColor||'var(--navy)'}">${fmt(proj)}</b>${fits?' <span style="color:#0d9488;font-weight:700">✓</span>':''}<div style="font-size:10px;color:var(--muted)">today ${fmt(c.p)}</div></div>`;
+  };
   const tr=r=>`<tr><td style="text-align:left"><b>${r}</b></td>${beds.map(b=>`<td>${cell(data[r]&&data[r][b])}</td>`).join('')}</tr>`;
   el.innerHTML=`
-    <p class="hint" style="margin:0 0 8px">${sub} Prices grown to the decoupling date at <b>${cagr}%/yr over ${yrs} year${yrs==1?'':'s'}</b>; "today" is the current level.</p>
+    <p class="hint" style="margin:0 0 8px">${sub} Prices grown to the decoupling date at <b>${cagr}%/yr over ${yrs} year${yrs==1?'':'s'}</b>; "today" is the current level.${budget>0?` <b style="color:#0d9488">Green ✓</b> = within the ${fmt(budget)} budget at projected prices.`:''}</p>
     <div class="tablewrap" style="border:none"><table style="min-width:0;font-size:13px">
       <thead><tr><th style="text-align:left">Region</th><th>1-Bedroom</th><th>2-Bedroom</th><th>3-Bedroom</th><th>4-Bedroom</th></tr></thead>
       <tbody>${["OCR","RCR","CCR"].map(tr).join('')}</tbody></table></div>
     <p class="hint" style="margin-top:8px">A "—" means no recent transaction in that band. Auto-refreshed from URA on each update.</p>`;
 }
 function reproject(){
-  renderBedMatrix(typeof NEWLAUNCH!=='undefined'?NEWLAUNCH:null,'newLaunchBody','Recent new-launch transacted prices from URA, by region.','#6938c4',n($('projCAGRnew').value)||0,n($('projYearsNew').value)||0);
-  renderBedMatrix(typeof MATRIX!=='undefined'?MATRIX:null,'ocrBody','Recent resale transacted prices from URA — only units with 70+ years of lease remaining (freehold included), by region.','#0d9488',n($('projCAGRresale').value)||0,n($('projYearsResale').value)||0);
+  const budget=(typeof G!=='undefined'&&G)?(G.activeBudget||0):0;
+  renderBedMatrix(typeof NEWLAUNCH!=='undefined'?NEWLAUNCH:null,'newLaunchBody','Recent new-launch transacted prices from URA, by region.','#6938c4',n($('projCAGRnew').value)||0,n($('projYearsNew').value)||0,budget);
+  renderBedMatrix(typeof MATRIX!=='undefined'?MATRIX:null,'ocrBody','Recent resale transacted prices from URA — only units with 70+ years of lease remaining (freehold included), by region.','#0d9488',n($('projCAGRresale').value)||0,n($('projYearsResale').value)||0,budget);
 }
 function renderTable(rows,rec){
   const b=$('tblBody'); b.innerHTML='';
@@ -1215,7 +1226,7 @@ function renderTable(rows,rec){
     tr.dataset.x=r.X;
     tr.onclick=()=>selectSplit(r.X);
     if(rec&&r.X===rec.X)tr.className='best';
-    else if(!r.verdict)tr.className='infeasible';
+    else if((G&&G.cashKnown)?!r.hhFundable:!r.verdict)tr.className='infeasible';
     tr.innerHTML=`
       <td>${100-r.X}% / ${r.X}%${rec&&r.X===rec.X?'<span class="pill recpill">BEST</span>':''}</td>
       <td>${fmt(r.bsdBuy)}</td>
@@ -1305,6 +1316,23 @@ function renderDetails(stay,exit,row,hasRec){
 
 function valTypeUI(){ const t=$('valType')?$('valType').value:'resale'; if($('valCAGR')) $('valCAGR').value = t==='newlaunch'?5:3.5; }
 // ---- auto-save / restore so figures are never lost across navigation, reloads or reopening ----
+function swapParties(){
+  const va=id=>($(id)?$(id).value:'');
+  const role=assessRoles({stName:va('stName')||'Staying party',exName:va('exName')||'Exiting party',
+    stInc:n(va('stIncome')),stDebt:n(va('stDebt')),stAge:n(va('stAge')),stCash:n(va('stCash')),stCpf:n(va('stCpf')),stCpfUsed:n(va('stCpfRefund100')),stRes:va('stCitizen'),
+    exInc:n(va('exIncome')),exDebt:n(va('exDebt')),exAge:n(va('exAge')),exCash:n(va('exCash')),exRes:va('exCitizen'),exCpfR100:n(va('exCpfRefund100')),
+    L:n(va('propLoan')),stress:n(va('stress'))||4,tdsr:n(va('tdsr'))||55});
+  if(!role.swap){
+    if(!confirm('A swap is NOT recommended on the current figures.\n\n'+(role.note||role.verdict)+'\n\nThe staying party must be able to carry the full restructured loan, and the exiting party should have enough to buy next — swapping here may break that.\n\nSwap the two parties anyway?')) return;
+  }
+  const pairs=[['exName','stName'],['exCitizen','stCitizen'],['exAge','stAge'],['exIncome','stIncome'],['exDebt','stDebt'],['exCash','stCash'],['exCpf','stCpf'],['exCpfRefund100','stCpfRefund100']];
+  pairs.forEach(p=>{ const a=$(p[0]),b=$(p[1]); if(a&&b){ const t=a.value; a.value=b.value; b.value=t; } });
+  const ge=$('exGender')?$('exGender').value:'m', gs=$('stGender')?$('stGender').value:'m';
+  if(typeof applyGenderUI==='function'){ applyGenderUI('ex',gs); applyGenderUI('st',ge); }
+  tenureTouched=false; if(typeof syncTenure==='function') syncTenure();   // re-derive staying loan tenure for the new staying party's age
+  if(typeof saveState==='function') saveState();
+  if($('results') && $('results').style.display==='block') run();
+}
 function estStayCpf(){
   const price=n($('stCpfPrice').value)||n($('valPrice').value)||n($('propVal').value);
   const loan=n($('propLoan').value);
@@ -1315,6 +1343,7 @@ function estStayCpf(){
   if($('stCpfEstOut')) $('stCpfEstOut').innerHTML = price>0
     ? `Estimated staying-party CPF ≈ <b>${fmt(est)}</b> — equity paid in (price ${fmt(price)} − outstanding loan ${fmt(loan)} = ${fmt(equityPaid)}) minus the exiting party's CPF ${fmt(exC)}. Overstates if cash was used; refine with the manual field.`
     : `Enter the purchase price (or fill Section 1) to estimate.`;
+  const _dS=$('stCpfEstOut')?$('stCpfEstOut').closest('details'):null; if(_dS)_dS.open=false; if($('stCpfRefund100'))$('stCpfRefund100').scrollIntoView({behavior:'smooth',block:'center'});
   if($('results') && $('results').style.display==='block') run();
 }
 const STORE_KEY='decouplingCalc_v1';
@@ -1332,6 +1361,7 @@ function estValue(){
   const v=Math.round(P*Math.pow(1+c,y));
   $('propVal').value=addCommas(v);
   $('valEstOut').innerHTML=`${fmt(P)} grown at ${(c*100).toFixed(1)}%/yr over ${y} yr${y==1?'':'s'} ≈ <b>${fmt(v)}</b> &nbsp;→ filled above.`;
+  const _d=$('valEstOut').closest('details'); if(_d)_d.open=false; if($('propVal'))$('propVal').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function loanModeUI(){ const prog=$('loanMode')&&$('loanMode').value==='progressive'; if($('loanProgRow')) $('loanProgRow').style.display=prog?'block':'none'; }
 function syncLoanOrig(){
@@ -1382,6 +1412,7 @@ function estLoan(){
     note=`Resale — ${(heldM/12).toFixed(1)} yr repaid. Principal repaid ${fmt(repaid)}.`;
   }
   $('loanEstOut').innerHTML=`${Yt}-yr loan at ${(r*1200).toFixed(1)}%. ${note} Outstanding ≈ <b>${fmt(bal)}</b> &nbsp;→ filled above.`;
+  const _dL=$('loanEstOut').closest('details'); if(_dL)_dL.open=false; if($('propLoan'))$('propLoan').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function cpfModeUI(){
   const prog=$('cpfMode') && $('cpfMode').value==='progressive';
@@ -1504,6 +1535,7 @@ function estCpf(){
     ? `progressive — downpayment ${fmt(C0)} + ${Math.round(n($('cpfShare').value)||50)}% construction mortgage (principal + interest) ${fmt(Math.round(constrCPF))} + post-TOP CPF ${fmt(Math.round(postCPF))} (OA ${fmt(Math.round(oaUsed))}/mo)`
     : `resale — full instalment from day one`;
   $('cpfEstOut').innerHTML=`Over ${Y} yrs (${modeTxt}): principal ${fmt(Math.round(prin))} + accrued interest ${fmt(accrued)} = <b>${fmt(total)}</b> &nbsp;→ filled above.`;
+  const _dC=$('cpfEstOut').closest('details'); if(_dC)_dC.open=false; if($('exCpfRefund100'))$('exCpfRefund100').scrollIntoView({behavior:'smooth',block:'center'});
 }
 // auto-default the staying loan tenure to the years left to age 65 (unless user overrides)
 let tenureTouched=false;
@@ -1577,6 +1609,7 @@ function renderAfford(stay,exit,row){
             ${row.stRemainingCash>0?`<p style="font-size:12px;color:var(--muted);margin:6px 0 0">Includes a ${fmt(row.stRemainingCash)} top-up from ${stay.name}'s leftover cash. On ${exit.name}'s own funds (no top-up), the budget is ${fmt(row.exBudgetOwn)}.</p>`:''}          </div>` : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px">Funds fall below the entry price for private property at this split.</div>`;
   const ura="https://eservice.ura.gov.sg/property-market-information/pmiResidentialTransactionSearch";
   const budgetTxt = maxP>0 ? fmt(maxP) : "Below private-property entry";
+  const projYrs = n($('holdYears').value)||n($('projYearsResale').value)||4;        // years to decoupling
   $('affordCard').innerHTML=`
     <h3><span class="dot next"></span>Exiting Party — Sale Proceeds &amp; What ${exit.name} Can Buy Next <span style="font-weight:500;color:var(--muted);font-size:12px">(at the ${row.X}% share)</span></h3>
     <div class="grid cols-2">
@@ -1606,9 +1639,10 @@ function renderAfford(stay,exit,row){
           <br>${exit.name}'s income could actually support a bigger loan of <b>${fmt(exit.exMaxLoanTDSR)}</b>. To use it in full, ${exit.pn.s} would need a property of about <b>${fmt(priceFull)}</b> (still at 75% LTV)${fullLoanTopUp>0?`, topping up about <b>${fmt(fullLoanTopUp)}</b> more cash/CPF`:`, which ${exit.pn.p} current funds already cover`}.
         </div>`:''}
         <div style="background:var(--goodbg);border:1px solid #bfe3cf;border-radius:10px;padding:12px 14px;margin-top:12px">
-          <div style="font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Indicative budget</div>
+          <div style="font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Indicative budget (at decoupling)</div>
           <div style="font-size:24px;font-weight:700;color:var(--navy);margin:2px 0">${budgetTxt}</div>
-          <div style="font-size:13px;color:var(--ink)">${suggestType(maxP)}</div>
+          <div style="font-size:13px;color:var(--ink)">At today's prices, roughly: ${suggestType(maxP)}</div>
+          ${maxP>0?`<p class="hint" style="margin:6px 0 0">For the projected picture, the <b>green ✓ cells</b> in the new-launch &amp; resale tables below show what ${exit.name} can enter at <b>${projYrs}-year projected prices</b> on this ${fmt(maxP)} budget.</p>`:''}
           ${costBreak}
         </div>
       </div>
