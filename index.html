@@ -399,6 +399,16 @@
       <h3><span class="dot stay"></span>Liquidity (for Buyout)</h3>
       <label>Cash Savings ($)</label><input id="stCash" type="number" placeholder="e.g. 120,000">
       <label>CPF Available ($)</label><input id="stCpf" type="number" placeholder="e.g. 170,000">
+      <label>Staying Party's CPF + Accrued Interest Used (Full Sum)</label><input id="stCpfRefund100" type="number" placeholder="e.g. 200,000"><p class="hint">CPF principal + accrued interest the staying party has poured into this property. Used to judge who should stay vs exit. Enter directly, or auto-estimate below.</p>
+      <details class="assump" style="margin-top:6px;background:#f3f4f6">
+        <summary>Auto-estimate staying party's CPF used</summary>
+        <div style="padding:4px 0 10px">
+          <label>Original Purchase Price ($)</label><input id="stCpfPrice" type="number" placeholder="defaults to Section 1 value"><p class="hint">The price the property was bought at (not today's value). Blank = uses the purchase price / value from Section 1.</p>
+          <p class="hint" style="margin:6px 0"><b>Method:</b> equity paid into the property so far = <b>purchase price − outstanding loan at decoupling</b> (downpayment + progressive payments + principal repaid). The staying party's CPF ≈ that equity <b>minus the exiting party's CPF used</b> (from Section 2). Assumes both owners funded the equity via CPF — it overstates if cash was used, so use the manual field above for precision.</p>
+          <button class="ghost" style="padding:9px 16px;font-size:13px;margin-top:4px" onclick="estStayCpf()">Compute &amp; Fill Above ↑</button>
+          <p class="hint" id="stCpfEstOut" style="margin-top:8px"></p>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -444,15 +454,19 @@
             <th>BSD on Buyout</th>
             <th>SSD (Exit Pays)</th>
             <th>Staying Upfront<br>Cash + CPF</th>
-            <th>Staying<br>Can Fund?</th>
+            <th>Staying Cash<br>(excl. CPF)</th>
+            <th>Household<br>Can Fund?</th>
             <th>Exiting Cash<br>Proceeds</th>
+            <th>Real Cash<br>Needed</th>
             <th>Exiting<br>Budget</th>
           </tr>
         </thead>
         <tbody id="tblBody"></tbody>
       </table>
     </div>
-    <p class="legend"><b>Staying upfront cash + CPF</b> = downpayment + BSD + ABSD + legal. <b>Exiting cash proceeds</b> = share value − loan share − SSD − legal − full CPF refund (negative = must top up cash to refund CPF). <b>Exiting budget</b> = max price <span class="exname">the exiting party</span> can afford from cash + CPF + loan + the staying party's leftover cash savings, after stamp duty &amp; legal. Highlighted row = recommended split; click any other row to see why it is not the pick.</p>
+    <p class="legend"><b>Staying upfront cash + CPF</b> = downpayment + BSD + ABSD + legal. <b>Exiting cash proceeds</b> = share value − loan share − SSD − legal − full CPF refund (negative = must top up cash to refund CPF). <b>Exiting budget</b> = max price <span class="exname">the exiting party</span> can afford from cash + CPF + loan + the staying party's leftover cash savings, after stamp duty &amp; legal. <b>Staying cash (excl. CPF)</b> = the part of the outlay paid in real cash (CPF the staying party deploys is not counted). <b>Real cash needed</b> = staying cash + the exiting party's cash top-up to refund CPF — the figure the recommended split minimises. Highlighted row = recommended split; click any other row to see why it is not the pick.</p>
+
+    <div id="logicPanel" style="margin-top:16px"></div>
 
     <div id="compareNote" style="margin-top:14px"></div>
 
@@ -730,7 +744,7 @@ function run(){
   const intendedPrice=n($('intendedPrice').value);
   // staying
   const stRes=$('stCitizen').value, stAge=n($('stAge').value), stInc=n($('stIncome').value),
-        stDebt=n($('stDebt').value), stCash=n($('stCash').value), stCpf=n($('stCpf').value);
+        stDebt=n($('stDebt').value), stCash=n($('stCash').value), stCpf=n($('stCpf').value), stCpfR100=n($('stCpfRefund100').value);
   const stTenure=n($('stTenure').value)||30;
   const exName=($('exName').value||'').trim()||'Exiting party';
   const stName=($('stName').value||'').trim()||'Staying party';
@@ -786,35 +800,44 @@ function run(){
     const exBudgetOwn=maxAffordablePrice(exFunds,exCashAvail,exMaxLoanTDSR,exRes,nextOnly,minCashPct,nextLegal);
     const hhFunds=exFunds+stRemainingCash;                       // household funds: her cash+CPF + staying party's leftover cash
     const exBudget=maxAffordablePrice(hhFunds,exCashAvail+stRemainingCash,exMaxLoanTDSR,exRes,nextOnly,minCashPct,nextLegal);
+    const exTopUp=Math.max(0,-exCashOut);                         // cash the exiting party must add to fully refund their own CPF
+    const realHouseholdCash=stCashUsed+exTopUp;                   // total REAL cash the household must produce (staying party's CPF excluded)
+    const hhFundable=(stCpfUsed<=stCpf+1)&&(realHouseholdCash<=stCash+exCash+1);  // household can fund buyout AND any CPF top-up from real cash
     const exOk = exCashOut>=0;   // walks away cash-positive (full CPF refund covered without topping up)
     const stayOk = stCanFund;
     const verdict = exOk && (!cashKnown || stCanFund);   // if cash is known, the staying party must also be able to fund
-    return {X,f,shareVal,bsdBuy,absdBuy,ssd,exEquity,legalFee:legal,retainedLoan,desiredNewLoan,newTotalLoan,partLoan,downpayment,stInstal,loanLimited,stOutlay,stCanFund,exNet,cpfRefund,exCashOut,exCashAvail,exCpfAvail,exFunds,borrowedFromEx,stRemainingCash,hhFunds,exBudgetOwn,exBudget,exOk,stayOk,verdict};
+    return {X,f,shareVal,bsdBuy,absdBuy,ssd,exEquity,legalFee:legal,retainedLoan,desiredNewLoan,newTotalLoan,partLoan,downpayment,stInstal,loanLimited,stOutlay,stCanFund,stCashUsed,stCpfUsed,exNet,cpfRefund,exCashOut,exTopUp,realHouseholdCash,hhFundable,exCashAvail,exCpfAvail,exFunds,borrowedFromEx,stRemainingCash,hhFunds,exBudgetOwn,exBudget,exOk,stayOk,verdict};
   });
 
-  // recommended = smallest split where BOTH parties work
-  let rec = rows.find(r=>r.verdict);                  // CLEAN: smallest cash-positive (and fundable if cash known)
-  let recReason;
-  if(rec){
-    recReason = rec.X===1?'one':'found';
+  // ---- recommended split: least REAL cash for the household (staying-party CPF not counted), tie-break on exit budget ----
+  let rec, recReason;
+  if(!cashKnown){
+    // no liquidity entered — fall back to the prudent rule: smallest cash-positive split
+    rec = rows.find(r=>r.exOk);
+    recReason = rec ? (rec.X===1?'one':'found') : 'exitcpf';
   } else {
-    const anyExOk = rows.some(r=>r.exOk);
-    const fundable = rows.filter(r=>r.stCanFund);
-    if(cashKnown && anyExOk && fundable.length){
-      rec = fundable[fundable.length-1];              // BEST AVAILABLE: largest split the staying party can fund (most budget for the exiting party)
-      recReason = 'bestfundable';
-    } else if(anyExOk){
-      recReason = 'stayfund';                         // staying party cannot fund a workable share
+    const fundable = rows.filter(r=>r.hhFundable);
+    if(fundable.length){
+      rec = fundable.slice().sort((a,b)=>{
+        const ca=Math.round(a.realHouseholdCash/1000), cb=Math.round(b.realHouseholdCash/1000);
+        if(ca!==cb) return ca-cb;                     // least real household cash first
+        return b.exBudget-a.exBudget;                 // tie-break: bigger exit budget
+      })[0];
+      recReason='leastcash';
     } else {
-      recReason = 'exitcpf';                          // exiting party never cash-positive even at 50%
+      const sf = rows.filter(r=>r.stCanFund);
+      if(sf.length){ rec=sf[sf.length-1]; recReason='bestfundable'; }
+      else { recReason = rows.some(r=>r.exOk)?'stayfund':'exitcpf'; }
     }
   }
 
   const stay={stMaxLoan,L,V,E,stLiquidity,stLtvCap,actualRate,stress,tdsr,stAge,stInc,stDebt,partLoanPct,minCashPct,stRes,stTenure,name:stName,pn:pn(stGender)};
   const exit={exMaxLoanTDSR,exAge,nextOnly,exRes,sr,hold,V,L,minCashPct,intendedPrice,name:exName,exCash,legal:nextLegal,pn:pn(exGender)};
-  G={rows,stay,exit,rec};
+  G={rows,stay,exit,rec,reason:recReason};
+  const roleHTML=assessRoles({stName,exName,stInc,stDebt,stAge,stCash,stCpf,stCpfUsed:stCpfR100,stRes,exInc,exDebt,exAge,exCash,exRes,exCpfR100,L,stress,tdsr});
   renderReco(rec,recReason,rows,stay,exit);
   renderTable(rows,rec);
+  renderLogicPanel(rec,recReason,rows,stay,exit,roleHTML);
   reproject();
   renderAdvisory(rec,recReason,rows,sr,hold);
   const wasHidden=$('results').style.display!=='block';
@@ -823,12 +846,70 @@ function run(){
   if(wasHidden) $('results').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+function assessRoles(a){
+  const absdNext=r=>r==='foreigner'?60:(r==='pr'?5:0);
+  const capCur=maxLoanTDSR(a.stInc,a.stDebt,a.stAge,a.stress,a.tdsr);   // current staying party's max loan
+  const capAlt=maxLoanTDSR(a.exInc,a.exDebt,a.exAge,a.stress,a.tdsr);   // exiting party's max loan, if they stayed
+  const curCarry=a.stAge>0&&a.stAge<65&&capCur>=a.L-1;
+  const altCarry=a.exAge>0&&a.exAge<65&&capAlt>=a.L-1;
+  const curAbsd=absdNext(a.exRes), altAbsd=absdNext(a.stRes);
+  const stCpfU=a.stCpfUsed||0, exCpfU=a.exCpfR100||0, haveCpf=(stCpfU>0||exCpfU>0);
+  let verdict,tone,lines=[];
+  if(a.L>0 && !curCarry && altCarry){
+    verdict=`Consider swapping — ${a.exName} should be the staying party.`; tone='var(--bad)';
+    lines.push(`<b>Loan-carry (the hard gate):</b> ${a.stName} cannot take over the full ${fmt(a.L)} loan alone (income supports ≈ ${fmt(capCur)}${a.stAge>=65?', and age leaves little/no tenure':''}), but ${a.exName} can (≈ ${fmt(capAlt)}). The staying party must carry the whole loan, so ${a.exName} is the natural stayer.`);
+  } else if(a.L>0 && !curCarry && !altCarry){
+    verdict=`Neither party can take over the full loan alone — structural issue.`; tone='var(--bad)';
+    lines.push(`<b>Loan-carry:</b> the full ${fmt(a.L)} loan exceeds what either income supports on its own (${a.stName} ≈ ${fmt(capCur)}, ${a.exName} ≈ ${fmt(capAlt)}). Fix one of: higher income, pay down the loan first, a longer tenure (younger party), or reconsider timing.`);
+  } else {
+    if(a.L>0) lines.push(`<b>Loan-carry (the hard gate):</b> ${a.stName} can take over the full ${fmt(a.L)} loan (income supports ≈ ${fmt(capCur)}).${altCarry?` ${a.exName} could also carry it (≈ ${fmt(capAlt)}).`:` ${a.exName} could not (≈ ${fmt(capAlt)}), so the roles cannot simply swap.`}`);
+    let swapAbsd=false, swapCpf=false;
+    if(curAbsd>altAbsd && altCarry){ swapAbsd=true;
+      lines.push(`<b>ABSD:</b> ${a.exName} (next buyer) is ${a.exRes==='pr'?'a PR':'a foreigner'} → ${curAbsd}% ABSD on the next purchase, while ${a.stName} is a citizen (0%) and can also carry the loan. If ${a.stName} is the one buying next, swapping avoids that ABSD.`);
+    } else {
+      lines.push(`<b>ABSD:</b> ${a.exName} buys next${curAbsd>0?` — ${curAbsd}% ABSD applies (${a.exRes==='pr'?'PR':'foreigner'})`:` as a citizen (0% on a first property)`}. No ABSD saving from swapping.`);
+    }
+    if(haveCpf){
+      if(exCpfU>stCpfU*1.2 && (exCpfU-stCpfU)>50000){
+        lines.push(`<b>CPF used:</b> ${a.exName} used <b>more</b> CPF (${fmt(exCpfU)}) than ${a.stName} (${fmt(stCpfU)}). The exiting party must refund their CPF in full, so the heavier-CPF party is better kept as the <i>staying</i> party to avoid a big cash top-up.${altCarry?` Since ${a.exName} can also carry the loan, a swap is worth considering.`:` But ${a.exName} cannot carry the loan, so instead lean to a larger exiting share so the sale covers the refund.`}`);
+        if(altCarry) swapCpf=true;
+      } else if(stCpfU>exCpfU*1.2 && (stCpfU-exCpfU)>50000){
+        lines.push(`<b>CPF used:</b> ${a.stName} used more CPF (${fmt(stCpfU)}) than ${a.exName} (${fmt(exCpfU)}) — good: the heavier-CPF party is already staying, so only the smaller refund (${fmt(exCpfU)}) falls on ${a.exName}. CPF-efficient as is.`);
+      } else {
+        lines.push(`<b>CPF used:</b> roughly balanced (${a.stName} ${fmt(stCpfU)} vs ${a.exName} ${fmt(exCpfU)}) — no strong CPF reason to swap.`);
+      }
+    } else {
+      lines.push(`<b>CPF used:</b> enter both parties' CPF used (the staying-party field is in Section 3) to judge who should stay on CPF grounds.`);
+    }
+    if(swapAbsd||swapCpf){ verdict=`Roles work — but a swap may be better (${swapAbsd&&swapCpf?'ABSD + CPF':swapAbsd?'ABSD':'CPF'}).`; tone='var(--warn)'; }
+    else { verdict=`Current roles are appropriate.`; tone='var(--good)'; }
+  }
+  lines.push(`<b>Cash check:</b> ${a.stName} needs cash/CPF for the buyout; ${a.exName} needs cash for any CPF top-up plus the next downpayment (5% must be cash). Pooled cash entered: ${fmt((a.stCash||0)+(a.exCash||0))}.`);
+  return `<div class="note" style="border-left-color:${tone}"><b>Should ${a.stName} stay and ${a.exName} exit? — ${verdict}</b><ul style="margin:6px 0 0;padding-left:18px;line-height:1.6">${lines.map(l=>`<li>${l}</li>`).join('')}</ul><p class="hint" style="margin:6px 0 0">Assessed on income, age/tenure (loan-carry), residency (ABSD), CPF used and cash on hand.</p></div>`;
+}
+function renderLogicPanel(rec,reason,rows,stay,exit,roleHTML){
+  const el=$('logicPanel'); if(!el) return;
+  let logic='';
+  if(rec && reason==='leastcash'){
+    const exTop = rec.exCashOut<0?fmt(-rec.exCashOut):'$0';
+    logic=`<div class="note" style="border-left-color:#6938c4"><b>How the recommended split is chosen — lowest real cash for the household</b>
+      <p style="margin:6px 0 0;line-height:1.6">A buyout is funded from two different pockets: <b>CPF</b> (already locked away for property/retirement) and <b>cash</b> (spendable). The tool ranks every split by the <b>real cash</b> the household must actually produce — it does <i>not</i> count CPF the staying party deploys, because that money was never spendable cash in the first place.</p>
+      <p style="margin:8px 0 0;line-height:1.6"><b>Real cash needed = ${stay.name}'s cash (excluding CPF) + ${exit.name}'s cash top-up to refund CPF.</b> At the recommended <b>${100-rec.X}% / ${rec.X}%</b>: ${stay.name} puts in <b>${fmt(rec.stCashUsed)}</b> cash (the rest of the ${fmt(rec.stOutlay)} outlay is paid from CPF), and ${exit.name} ${rec.exCashOut<0?`tops up <b>${exTop}</b> into ${exit.pn.p} own CPF`:`needs no cash top-up`} — total real cash <b>${fmt(rec.realHouseholdCash)}</b>, the lowest of all workable splits, while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> next-purchase budget.</p>
+      <p style="margin:8px 0 0;line-height:1.6"><b>Why this can beat a smaller (cheaper-duty) share:</b> a smaller exiting share cuts stamp duty and ${stay.name}'s outlay, but forces ${exit.name} to top up more <i>cash</i> to refund CPF. If ${stay.name} is CPF-rich, paying the bigger share from CPF keeps real cash lower than that top-up — so the larger, cash-positive share wins. If ${stay.name} has little CPF, the opposite holds and a smaller share is picked. The table's <b>Real Cash Needed</b> column shows this comparison for every split.</p></div>`;
+  }
+  el.innerHTML=(roleHTML||'')+logic;
+}
 function renderReco(rec,reason,rows,stay,exit){
   const el=$('reco');
   if(rec){
     el.className='reco';
     let tag, body;
-    if(reason==='bestfundable'){
+    if(reason==='leastcash'){
+      tag = 'Recommended split — lowest real cash for the household';
+      const topup = rec.exCashOut<0 ? fmt(-rec.exCashOut) : null;
+      body = `This split needs the <b>least real cash</b> from the household: <b>${fmt(rec.realHouseholdCash)}</b> — ${stay.name}'s cash ${fmt(rec.stCashUsed)} plus ${exit.name}'s CPF top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}. ${stay.name}'s CPF funds the rest of the ${fmt(rec.stOutlay)} buyout, so it is not counted as out-of-pocket cash. ${exit.name}'s next-purchase budget is <b>${fmt(rec.exBudget)}</b>.`
+        + (rec.exCashOut<0 ? ` ${exit.pn.P} cash proceeds show −${topup}, but that top-up returns into ${exit.pn.p} own CPF (recoverable, and usable for the next home) and the household has the cash to cover it.` : ` ${exit.pn.S} also walks away cash-positive.`);
+    } else if(reason==='bestfundable'){
       tag = 'Recommended split — best available for both';
       const topup = rec.exCashOut<0 ? fmt(-rec.exCashOut) : null;
       body = `No split is perfect on these figures, so this is the best workable one: the <b>largest share ${stay.name} can fund</b>. ${stay.name} takes over the full loan for <b>${fmt(rec.stOutlay)}</b> cash/CPF, and ${exit.name} gets the highest budget among the fundable options — <b>${fmt(rec.exBudget)}</b> for the next purchase.` +
@@ -873,9 +954,15 @@ function detailBlock(row){
   const bigger=row.X>rec.X, same=row.X===rec.X;
   let body;
   if(same){
+    if(rec.exCashOut<0){
+      body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> This split is recommended because it needs the <b>least real cash</b> from the household. ${exit.name}'s sale does not fully cover ${exit.pn.p} CPF refund, so ${exit.pn.s} tops up <b>${fmt(-rec.exCashOut)}</b> in cash — but that money goes straight back into ${exit.pn.p} own CPF (recoverable, and usable for the next purchase). ${stay.name} funds most of the buyout from CPF, keeping out-of-pocket cash low.</p>
+      <p style="margin:0 0 8px"><b>A larger ${exit.name} share</b> would let ${exit.pn.o} avoid the top-up, but only by making ${stay.name} put in more cash and a bigger loan — more total real cash and more stamp duty. <b>A smaller share</b> is cheaper on duty but forces an even bigger cash top-up from ${exit.name}.</p>
+      <p style="margin:0"><b>Watch-out:</b> ${exit.name} must have the <b>${fmt(-rec.exCashOut)}</b> cash ready at completion to refund the CPF, and still keep 5% cash for the next purchase.</p>`;
+    } else {
     body=`<p style="margin:0 0 8px"><b>The full trade-off.</b> A <i>smaller</i> exiting share saves stamp duty, but moves less of the home's equity to ${exit.name} — so ${exit.pn.s} has less for ${exit.pn.p} next property, and below ${rec.X}% ${exit.pn.p} share frees up less equity than ${exit.pn.p} CPF refund requires, so ${exit.pn.s} would need to top up cash. A <i>larger</i> share gives ${exit.pn.o} more equity and budget, but costs more stamp duty and a bigger loan for ${stay.name}. <b>${rec.X}% is the sweet spot</b> — it is the smallest share where the sale still covers ${exit.pn.p} CPF refund, so ${exit.pn.s} does not have to pay any cash out of ${exit.pn.p} own pocket, while keeping the stamp duty as low as possible.</p>
       <p style="margin:0 0 8px"><b>If the couple pools money:</b> any cash ${exit.name} would need to top up at a smaller share is not lost — it goes back into ${exit.pn.p} CPF and funds ${exit.pn.p} next purchase. So a smaller, cheaper share can still work if ${exit.pn.s} is not planning to spend much on ${exit.pn.p} next home; pick ${rec.X}% or higher when ${exit.pn.s} wants the most buying power for the next property.</p>
       <p style="margin:0"><b>Watch-out:</b> 5% of the next purchase must be paid in <i>cash</i> (CPF cannot). Smaller shares turn ${exit.pn.p} cash into CPF, so check ${exit.pn.p} leftover cash still clears that 5% — ${rec.X}% keeps more cash in ${exit.pn.p} hand.</p>`;
+    }
   } else if(!bigger){
     body=`<p style="margin:0 0 8px"><b>Cheaper — but here is the catch.</b> ${row.X}% saves <b>${fmt(rec.bsdBuy-row.bsdBuy)}</b> in stamp duty and ${fmt(rec.stOutlay-row.stOutlay)} of ${stay.name}'s outlay versus ${rec.X}%.${row.exCashOut<0?` But ${exit.name}'s share frees up less equity than ${exit.pn.p} CPF refund requires — ${exit.pn.s} tops up <b>${fmt(-row.exCashOut)}</b> in cash. That cash is not lost (it returns to ${exit.pn.p} CPF), but it is now locked as CPF, not spendable cash.`:''}</p>
       <p style="margin:0 0 8px"><b>The real cost:</b> less equity is moved to ${exit.name}, so ${exit.pn.p} next-purchase budget falls to <b>${fmt(row.exBudget)}</b> (from ${fmt(rec.exBudget)}). If ${exit.pn.s} wants a substantial next property, that loss outweighs the stamp-duty saving.</p>
@@ -891,6 +978,10 @@ function renderCompare(row){
   const rec=G.rec, stay=G.stay, exit=G.exit;
   if(!rec){ el.innerHTML=''; return; }
   if(row.X===rec.X){
+    if(G.reason==='leastcash'){
+      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Among all workable splits this needs the <b>least real cash</b> from the household — <b>${fmt(rec.realHouseholdCash)}</b> (${stay.name}'s cash ${fmt(rec.stCashUsed)} + ${exit.name}'s top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}) — while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> budget. ${stay.name}'s CPF covers the rest of the buyout, so it is not counted as cash.${detailBlock(row)}</div>`;
+      return;
+    }
     const prev=rec.X<=1?null:G.rows.filter(r=>r.X<rec.X).pop();   // next-smaller exiting share
     if(prev){
       const why = prev.exCashOut<0
@@ -1130,8 +1221,10 @@ function renderTable(rows,rec){
       <td>${fmt(r.bsdBuy)}</td>
       <td>${r.ssd>0?fmt(r.ssd):'—'}</td>
       <td>${fmt(r.stOutlay)}</td>
-      <td>${r.stayOk?'<span class="pill ok">Yes</span>':'<span class="pill no">No</span>'}</td>
+      <td>${fmt(r.stCashUsed)}</td>
+      <td>${r.hhFundable?'<span class="pill ok">Yes</span>':'<span class="pill no">No</span>'}</td>
       <td class="${r.exCashOut<0?'neg':''}">${fmt(r.exCashOut)}</td>
+      <td>${fmt(r.realHouseholdCash)}</td>
       <td>${r.exBudget>0?fmt(r.exBudget):'—'}</td>`;
     b.appendChild(tr);
   });
@@ -1212,6 +1305,18 @@ function renderDetails(stay,exit,row,hasRec){
 
 function valTypeUI(){ const t=$('valType')?$('valType').value:'resale'; if($('valCAGR')) $('valCAGR').value = t==='newlaunch'?5:3.5; }
 // ---- auto-save / restore so figures are never lost across navigation, reloads or reopening ----
+function estStayCpf(){
+  const price=n($('stCpfPrice').value)||n($('valPrice').value)||n($('propVal').value);
+  const loan=n($('propLoan').value);
+  const exC=n($('exCpfRefund100').value);
+  const equityPaid=Math.max(0,price-loan);
+  const est=Math.max(0,equityPaid-exC);
+  if($('stCpfRefund100')) $('stCpfRefund100').value=addCommas(Math.round(est));
+  if($('stCpfEstOut')) $('stCpfEstOut').innerHTML = price>0
+    ? `Estimated staying-party CPF ≈ <b>${fmt(est)}</b> — equity paid in (price ${fmt(price)} − outstanding loan ${fmt(loan)} = ${fmt(equityPaid)}) minus the exiting party's CPF ${fmt(exC)}. Overstates if cash was used; refine with the manual field.`
+    : `Enter the purchase price (or fill Section 1) to estimate.`;
+  if($('results') && $('results').style.display==='block') run();
+}
 const STORE_KEY='decouplingCalc_v1';
 function saveState(){
   try{ const d={}; document.querySelectorAll('input,select').forEach(el=>{ if(el.id) d[el.id]=el.value; }); localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
@@ -1554,7 +1659,7 @@ function renderAdvisory(rec,reason,rows,sr,hold){
   $('advisory').innerHTML=html;
 }
 // money inputs: live thousands separators (commas) for easy reading
-const MONEY=['propVal','valPrice','propLoan','loanOrig','exIncome','exDebt','exCash','exCpf','exCpfRefund100','cpfLump','cpfIncome','cpfMonthly','bdManual','intendedPrice','stIncome','stDebt','stCash','stCpf','legal','psVal','psLoan','psExCpf','psExCash','psExCpfBal','psExInc','psExDebt','psStLegal','psStOther','psPenalty','psExLegal','psExOther'];
+const MONEY=['propVal','valPrice','propLoan','loanOrig','exIncome','exDebt','exCash','exCpf','exCpfRefund100','cpfLump','cpfIncome','cpfMonthly','bdManual','intendedPrice','stIncome','stDebt','stCash','stCpf','stCpfRefund100','stCpfPrice','legal','psVal','psLoan','psExCpf','psExCash','psExCpfBal','psExInc','psExDebt','psStLegal','psStOther','psPenalty','psExLegal','psExOther'];
 function addCommas(s){s=String(s).replace(/[^0-9]/g,'');return s?parseInt(s,10).toLocaleString('en-SG'):'';}
 let CURRENT_VIEW='home';
 function showView(v){
