@@ -1145,6 +1145,9 @@ function renderStayMin(stay,row){
   const incomeGap=Math.max(0,minIncome-stay.stInc);
   const meets=stay.stInc>=minIncome;
   const total=row.stOutlay, short=Math.max(0,total-stay.stLiquidity);
+  const loanActualPct=row.shareVal>0?Math.round(row.partLoan/row.shareVal*100):stay.partLoanPct;  // % of the share actually financed
+  const downActualPct=row.shareVal>0?Math.round(row.downpayment/row.shareVal*100):0;               // % of the share paid in cash/CPF
+  const stdDownPct=100-stay.partLoanPct;                                                            // the "standard" downpayment %
   $('stayMinCard').innerHTML=`
     <h3><span class="dot stay"></span>${stay.name}'s Buyout Requirements (${row.X}% Split)</h3>
     <div class="grid cols-2">
@@ -1161,7 +1164,10 @@ function renderStayMin(stay,row){
         <p style="font-size:11.5px;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.5px">How much cash / CPF — to buy over the share</p>
         <div class="kv"><span class="k">Exiting Owner's Share Value</span><span class="v">${fmt(row.shareVal)}</span></div>
         <div class="kv"><span class="k">Part-Purchase Loan (${stay.partLoanPct}%)</span><span class="v">${fmt(row.partLoan)}</span></div>
-        <div class="kv"><span class="k">Downpayment (Cash + CPF)</span><span class="v">${fmt(row.downpayment)}</span></div>
+        ${row.loanLimited?`<p style="font-size:11px;font-style:italic;color:var(--bad);margin:2px 0 4px;line-height:1.5">${stay.name}'s income/LTV unable to support the full ${stay.partLoanPct}% loan, resulting a shortfall of ${fmt(row.downpayment-(stdDownPct/100)*row.shareVal)} (to fund using cash/CPF) — pushing the downpayment amount up from ${stdDownPct}% to ${downActualPct}%.</p>`:''}
+        <div class="kv"><span class="k"><b>Downpayment (Cash + CPF) — ${downActualPct}% of share</b></span><span class="v"><b>${fmt(row.downpayment)}</b></span></div>
+        ${row.loanLimited?`<div class="kv" style="padding-left:14px"><span class="k" style="color:var(--muted);font-weight:400">↳ Standard downpayment (${stdDownPct}% of share)</span><span class="v" style="font-weight:500">${fmt((stdDownPct/100)*row.shareVal)}</span></div>
+        <div class="kv" style="padding-left:14px"><span class="k" style="color:var(--bad);font-weight:400">↳ Extra top-up — loan capped below ${stay.partLoanPct}%</span><span class="v" style="color:var(--bad);font-weight:500">+ ${fmt(row.downpayment-(stdDownPct/100)*row.shareVal)}</span></div>`:''}
         <div class="kv"><span class="k">BSD + ABSD + Legal</span><span class="v">${fmt(row.bsdBuy+row.absdBuy+row.legalFee)}</span></div>
       </div>
     </div>
