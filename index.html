@@ -900,7 +900,7 @@ function renderLogicPanel(rec,reason,rows,stay,exit,roleHTML){
       <p style="margin:8px 0 0;line-height:1.6"><b>Real cash needed = ${stay.name}'s cash (excluding CPF) + ${exit.name}'s cash top-up to refund CPF.</b> At the recommended <b>${100-rec.X}% / ${rec.X}%</b>: ${stay.name} puts in <b>${fmt(rec.stCashUsed)}</b> cash (${(rec.stOutlay-rec.stCashUsed)>1?`the remaining ${fmt(rec.stOutlay-rec.stCashUsed)} of the ${fmt(rec.stOutlay)} outlay is paid from CPF`:`no CPF deployed — the whole ${fmt(rec.stOutlay)} is cash`}), and ${exit.name} ${rec.exCashOut<0?`tops up <b>${exTop}</b> into ${exit.pn.p} own CPF`:`needs no cash top-up`} — total real cash <b>${fmt(rec.realHouseholdCash)}</b>, the lowest of all workable splits, while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> next-purchase budget.</p>
       <p style="margin:8px 0 0;line-height:1.6"><b>Why this can beat a smaller (cheaper-duty) share:</b> a smaller exiting share cuts stamp duty and ${stay.name}'s outlay, but forces ${exit.name} to top up more <i>cash</i> to refund CPF. If ${stay.name} is CPF-rich, paying the bigger share from CPF keeps real cash lower than that top-up — so the larger, cash-positive share wins. If ${stay.name} has little CPF, the opposite holds and a smaller share is picked. The table's <b>Real Cash Needed</b> column shows this comparison for every split.</p></div>`;
   }
-  el.innerHTML=(roleHTML||'')+logic;
+  el.innerHTML=`<div class="detail-extra" style="display:none">${(roleHTML||'')+logic}</div>`;
 }
 function renderReco(rec,reason,rows,stay,exit){
   const el=$('reco');
@@ -953,6 +953,8 @@ function selectSplit(X){
   renderAfford(G.stay,G.exit,row);
   renderIntent(G.exit,row);
   G.activeBudget=row.exBudget; reproject();
+  document.querySelectorAll('.detail-extra').forEach(e=>e.style.display='none');
+  document.querySelectorAll('.detail-toggle').forEach(b=>b.textContent='Show detailed analysis ▾');
 }
 function detailBlock(row){
   const rec=G.rec, stay=G.stay, exit=G.exit; if(!rec) return '';
@@ -976,40 +978,50 @@ function detailBlock(row){
     body=`<p style="margin:0 0 8px"><b>More for ${exit.name} — at a higher cost.</b> ${row.X}% moves more equity to ${exit.pn.o}: budget <b>${fmt(row.exBudget)}</b> (vs ${fmt(rec.exBudget)}), cash ${fmt(row.exCashOut)}. But it costs <b>${fmt(row.bsdBuy-rec.bsdBuy)}</b> more stamp duty, a bigger outlay for ${stay.name} (${fmt(row.stOutlay)}), and a larger loan on ${stay.pn.p} side — more lifetime interest.</p>
       <p style="margin:0"><b>Pick ${row.X}% only if:</b> ${exit.name} genuinely needs the extra firepower for a bigger next purchase${row.stayOk?` and ${stay.name} can comfortably fund and service the larger loan.`:` — but note ${stay.name} cannot fund this buyout as entered.`}</p>`;
   }
-  return `<button onclick="const d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';this.textContent=d.style.display==='none'?'Show detailed analysis ▾':'Hide detailed analysis ▴'" style="background:#f3f4f6;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:10px;color:var(--navy)">Show detailed analysis ▾</button><div style="display:none;font-size:13px;color:var(--ink);margin-top:10px;line-height:1.55;background:var(--warnbg);border:1px solid #eedcb6;border-radius:10px;padding:14px 16px">${body}</div>`;
+  return `<div style="font-size:13px;color:var(--ink);margin-top:4px;line-height:1.55;background:var(--warnbg);border:1px solid #eedcb6;border-radius:10px;padding:14px 16px">${body}</div>`;
+}
+function toggleDetail(){
+  const els=document.querySelectorAll('.detail-extra'); if(!els.length)return;
+  const show=els[0].style.display==='none';
+  els.forEach(e=>e.style.display=show?'':'none');
+  document.querySelectorAll('.detail-toggle').forEach(b=>b.textContent=show?'Hide detailed analysis ▴':'Show detailed analysis ▾');
 }
 function renderCompare(row){
   const el=$('compareNote'); if(!el)return;
   const rec=G.rec, stay=G.stay, exit=G.exit;
   if(!rec){ el.innerHTML=''; return; }
+  let whyNote='';
   if(row.X===rec.X){
     if(G.reason==='leastcash'){
-      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Among all workable splits this needs the <b>least real cash</b> from the household — <b>${fmt(rec.realHouseholdCash)}</b> (${stay.name}'s cash ${fmt(rec.stCashUsed)} + ${exit.name}'s top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}) — while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> budget. ${(rec.stOutlay-rec.stCashUsed)>1?`${stay.name}'s CPF covers the rest of the buyout, so it is not counted as cash.`:`${stay.name} used no CPF here, so the buyout is fully in cash.`}${detailBlock(row)}</div>`;
-      return;
-    }
-    const prev=rec.X<=1?null:G.rows.filter(r=>r.X<rec.X).pop();   // next-smaller exiting share
-    if(prev){
-      const why = prev.exCashOut<0
-        ? `At <b>${prev.X}%</b>, ${exit.name}'s share frees up less equity than ${exit.pn.p} CPF refund requires — ${exit.pn.s} would have to top up <b>${fmt(-prev.exCashOut)}</b> in cash just to refund ${exit.pn.p} own CPF`
-        : `At <b>${prev.X}%</b>, ${exit.name} pulls less equity out — cash ${fmt(prev.exCashOut)} vs ${fmt(rec.exCashOut)}`;
-      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}% (not ${100-prev.X}% / ${prev.X}%)?</b><br>${why}. At <b>${rec.X}%</b> the sale covers ${exit.pn.p} CPF and leaves ${exit.pn.o} <b>${fmt(rec.exCashOut)}</b> in hand, with more equity to put toward ${exit.pn.p} next home — for only <b>${fmt(rec.bsdBuy-prev.bsdBuy)}</b> more stamp duty.${detailBlock(row)}</div>`;
+      whyNote=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Among all workable splits this needs the <b>least real cash</b> from the household — <b>${fmt(rec.realHouseholdCash)}</b> (${stay.name}'s cash ${fmt(rec.stCashUsed)} + ${exit.name}'s top-up ${rec.exCashOut<0?fmt(-rec.exCashOut):'$0'}) — while still giving ${exit.name} a <b>${fmt(rec.exBudget)}</b> budget. ${(rec.stOutlay-rec.stCashUsed)>1?`${stay.name}'s CPF covers the rest of the buyout, so it is not counted as cash.`:`${stay.name} used no CPF here, so the buyout is fully in cash.`}</div>`;
     } else {
-      el.innerHTML=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Even at this small share ${exit.name} walks away cash-positive (<b>${fmt(rec.exCashOut)}</b>), so it is the lowest-cost split that works — keeping stamp duty to a minimum.${detailBlock(row)}</div>`;
+      const prev=rec.X<=1?null:G.rows.filter(r=>r.X<rec.X).pop();
+      if(prev){
+        const why = prev.exCashOut<0
+          ? `At <b>${prev.X}%</b>, ${exit.name}'s share frees up less equity than ${exit.pn.p} CPF refund requires — ${exit.pn.s} would have to top up <b>${fmt(-prev.exCashOut)}</b> in cash just to refund ${exit.pn.p} own CPF`
+          : `At <b>${prev.X}%</b>, ${exit.name} pulls less equity out — cash ${fmt(prev.exCashOut)} vs ${fmt(rec.exCashOut)}`;
+        whyNote=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}% (not ${100-prev.X}% / ${prev.X}%)?</b><br>${why}. At <b>${rec.X}%</b> the sale covers ${exit.pn.p} CPF and leaves ${exit.pn.o} <b>${fmt(rec.exCashOut)}</b> in hand, with more equity to put toward ${exit.pn.p} next home — for only <b>${fmt(rec.bsdBuy-prev.bsdBuy)}</b> more stamp duty.</div>`;
+      } else {
+        whyNote=`<div class="note" style="border-left-color:var(--good)"><b>Why ${100-rec.X}% / ${rec.X}%?</b> Even at this small share ${exit.name} walks away cash-positive (<b>${fmt(rec.exCashOut)}</b>), so it is the lowest-cost split that works — keeping stamp duty to a minimum.</div>`;
+      }
     }
-    return;
-  }
-  const bigger=row.X>rec.X;
-  let pts;
-  if(bigger){
-    pts=`<li><b>${exit.name} gets more</b> — cash proceeds ${fmt(row.exCashOut)} (vs ${fmt(rec.exCashOut)}) and budget ${fmt(row.exBudget)} (vs ${fmt(rec.exBudget)}).</li>
+  } else {
+    const bigger=row.X>rec.X;
+    let pts;
+    if(bigger){
+      pts=`<li><b>${exit.name} gets more</b> — cash proceeds ${fmt(row.exCashOut)} (vs ${fmt(rec.exCashOut)}) and budget ${fmt(row.exBudget)} (vs ${fmt(rec.exBudget)}).</li>
       <li><b>But it costs more</b> — BSD ${fmt(row.bsdBuy)} (vs ${fmt(rec.bsdBuy)}) and ${stay.name}'s upfront cash/CPF ${fmt(row.stOutlay)} (vs ${fmt(rec.stOutlay)}).</li>
       ${!row.stayOk?`<li style="color:var(--bad)"><b>And it does not work as entered</b> — the household cannot fund the larger ${fmt(row.stOutlay)} buyout.</li>`:''}`;
-  } else {
-    pts=`<li><b>It is cheaper</b> — BSD ${fmt(row.bsdBuy)} (vs ${fmt(rec.bsdBuy)}) and ${stay.name}'s upfront cash/CPF ${fmt(row.stOutlay)} (vs ${fmt(rec.stOutlay)}).</li>
+    } else {
+      pts=`<li><b>It is cheaper</b> — BSD ${fmt(row.bsdBuy)} (vs ${fmt(rec.bsdBuy)}) and ${stay.name}'s upfront cash/CPF ${fmt(row.stOutlay)} (vs ${fmt(rec.stOutlay)}).</li>
       ${row.exCashOut<0?`<li style="color:var(--bad)"><b>But ${exit.name} ends up short</b> — cash proceeds are ${fmt(row.exCashOut)}, so ${exit.pn.s} would top up ${fmt(-row.exCashOut)} to refund ${exit.pn.p} own CPF.</li>`:`<li><b>But ${exit.name} gets less</b> — proceeds ${fmt(row.exCashOut)} (vs ${fmt(rec.exCashOut)}).</li>`}
       <li><b>Smaller next-purchase budget</b> — ${fmt(row.exBudget)} (vs ${fmt(rec.exBudget)}).</li>`;
+    }
+    whyNote=`<div class="note" style="border-left-color:var(--warn)"><b>Why ${100-row.X}% / ${row.X}% is not the pick</b> — compared with the recommended ${100-rec.X}% / ${rec.X}%:<ul style="margin:6px 0 0;padding-left:18px;line-height:1.5">${pts}</ul></div>`;
   }
-  el.innerHTML=`<div class="note" style="border-left-color:var(--warn)"><b>Why ${100-row.X}% / ${row.X}% is not the pick</b> — compared with the recommended ${100-rec.X}% / ${rec.X}%:<ul style="margin:6px 0 0;padding-left:18px;line-height:1.5">${pts}</ul>${detailBlock(row)}</div>`;
+  el.innerHTML = detailBlock(row)
+    + `<button class="detail-toggle" type="button" onclick="toggleDetail()" style="background:#f3f4f6;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;margin:10px 0 0;color:var(--navy)">Show detailed analysis ▾</button>`
+    + `<div class="detail-extra" style="display:none;margin-top:10px">${whyNote}</div>`;
 }
 // ===== POST-ADVISORY · Part-Share Purchase (today's actuals, live compute) =====
 function psAbsd(v,res,hold){            // ABSD by residency & number of properties held (rates current 2026)
