@@ -18,7 +18,7 @@ NOTE: parsing follows URA's documented field names. If a first run looks empty/o
 paste the console output back and it can be tuned in minutes.
 """
 
-import json, re, sys, os, ssl, urllib.request, urllib.error
+import json, re, sys, os, ssl, time, urllib.request, urllib.error
 from datetime import date, datetime
 from statistics import median
 
@@ -51,16 +51,26 @@ def read_key():
     return key
 
 
-def http_get(url, headers):
-    req = urllib.request.Request(url, headers=headers)
+def http_get(url, headers, retries=3, timeout=120):
     ctx = ssl.create_default_context()
-    with urllib.request.urlopen(req, timeout=90, context=ctx) as r:
-        raw = r.read()
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        text = raw.decode("utf-8", errors="replace")     # URA names can carry accented bytes
-    return json.loads(text)
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+                raw = r.read()
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                text = raw.decode("utf-8", errors="replace")     # URA names can carry accented bytes
+            return json.loads(text)
+        except urllib.error.HTTPError:
+            raise  # real HTTP response (401/500 etc.) — retrying won't help; let callers handle
+        except (TimeoutError, urllib.error.URLError, ssl.SSLError, OSError) as e:
+            if attempt >= retries:
+                raise
+            wait = attempt * 10  # 10s, then 20s backoff
+            print(f"  {url.split('?')[0]} slow/failed ({e}); retry {attempt}/{retries - 1} in {wait}s…")
+            time.sleep(wait)
 
 
 def get_token(key):
