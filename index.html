@@ -357,14 +357,14 @@
             <label>Construction Floating Interest Rate (% p.a.)</label><input id="cpfConstrRate" type="number" value="1.5" step="0.1"><p class="hint">Promo / floating rate during the build (default 1.5%) — sizes the progressive-payment interest the exiting party part-funds. Construction phase (years to TOP) is taken from Section 1.</p>
             <label>Exiting Party's Share of the Mortgage Paid (%)</label><input id="cpfShare" type="number" value="50" step="1"><p class="hint">How much of the monthly mortgage the exiting party's CPF covers. Default 50% (equal split) — set to their ownership % if they pay proportionally.</p>
           </div>
-          <div id="cpfResaleMonthly">
-            <label id="cpfMonthlyLbl">Exiting Party's Monthly CPF Toward the Mortgage</label><input id="cpfMonthly" type="number" placeholder="e.g. 1,500">
+          <div id="cpfShared">
+            <label>Avg Monthly Income While Paying the Loan ($)</label><input id="cpfIncome" type="number" placeholder="defaults to income in Section 2" oninput="refreshOA()"><p class="hint">The exiting party's <b>average salary during the holding years</b> — usually lower than the projected decoupling-year income in Section 2. Drives the monthly CPF-OA put toward the mortgage (same method for resale and new launch). Blank = uses Section 2 income.</p>
+            <div class="kv" style="padding:8px 0"><span class="k">Exiting Party's Monthly CPF (OA) Toward the Mortgage</span><span class="v" id="cpfOAout">$0/mo</span></div>
+            <p class="hint" id="cpfOAnote" style="margin-top:0">Auto-computed from <span class="exname">the exiting party</span>'s age &amp; income, capped at the monthly instalment. For a new launch this applies from TOP onwards.</p>
+            <label id="cpfMonthlyLbl">Exiting Party's Monthly CPF Toward the Mortgage ($) — optional override</label><input id="cpfMonthly" type="number" placeholder="blank = estimated from income above"><p class="hint">Key the exact monthly CPF deduction (from the CPF statement / bank GIRO) if known — it overrides the income-based estimate. Useful when part of the instalment was paid in cash.</p>
           </div>
           <div id="cpfProgBottom" style="display:none">
             <div class="cpfhdr">③ After TOP (to decoupling)</div>
-            <label>Avg Monthly Income While Paying the Loan ($)</label><input id="cpfIncome" type="number" placeholder="defaults to income in Section 2" oninput="refreshOA()"><p class="hint">The exiting party's <b>average salary during the holding years</b> — usually lower than the projected decoupling-year income in Section 2. Drives the CPF-OA put toward the mortgage. Blank = uses Section 2 income.</p>
-            <div class="kv" style="padding:8px 0"><span class="k">Exiting Party's Monthly CPF (OA) — Used From TOP Onwards</span><span class="v" id="cpfOAout">$0/mo</span></div>
-            <p class="hint" id="cpfOAnote" style="margin-top:0">Auto-computed from <span class="exname">the exiting party</span>'s age &amp; income.</p>
             <label>Interest Rate From TOP Onwards (% p.a.)</label><input id="cpfPostRate" type="number" value="2" step="0.1"><p class="hint">The mortgage rate once the unit is completed — used to size the full instalment <span class="exname">the exiting party</span>'s CPF contribution goes toward.</p>
           </div>
           <p class="hint" style="margin-top:10px">Uses the "years held before decoupling" above as the accrual period (construction + post-TOP).</p>
@@ -403,8 +403,10 @@
       <details class="assump" style="margin-top:6px;background:#f3f4f6">
         <summary>Auto-estimate staying party's CPF used</summary>
         <div style="padding:4px 0 10px">
-          <label>Original Purchase Price ($)</label><input id="stCpfPrice" type="number" placeholder="defaults to Section 1 value"><p class="hint">The price the property was bought at (not today's value). Blank = uses the purchase price / value from Section 1.</p>
-          <p class="hint" style="margin:6px 0"><b>Method:</b> equity paid into the property so far = <b>purchase price − outstanding loan at decoupling</b> (downpayment + progressive payments + principal repaid). The staying party's CPF ≈ that equity <b>minus the exiting party's CPF used</b> (from Section 2). Assumes both owners funded the equity via CPF — it overstates if cash was used, so use the manual field above for precision.</p>
+          <p class="hint" style="margin:0 0 8px"><b>Method — same engine as the exiting party's estimator (Section 2).</b> It reuses the purchase, loan and construction inputs from Sections 1 &amp; 2 and applies them to the staying party's <b>complementary share</b>: CPF at purchase = the CPF-payable purchase costs (downpayment balance + BSD + legal) <b>minus the exiting party's CPF lump</b>; construction mortgage = the remainder of each instalment; post-TOP / resale instalments = the staying party's own CPF-OA flow (income &amp; age based), capped at the part of the instalment the exiting party isn't paying. Each withdrawal accrues 2.5% p.a. from its own month — identical to Section 2. So if the roles ever swap, this figure is already the full refund sum, computed the same way.</p>
+          <label>Avg Monthly Income While Paying the Loan ($)</label><input id="stCpfIncome" type="number" placeholder="blank = uses the income entered above"><p class="hint">The staying party's <b>average salary during the holding years</b> — usually lower than the projected decoupling-year income above. Drives the CPF-OA put toward the mortgage.</p>
+          <label>Staying Party's CPF Used at Purchase ($) — optional override</label><input id="stCpfLump" type="number" placeholder="blank = auto complement of Section 2"><p class="hint">Blank = assumes the CPF-payable purchase costs not covered by the exiting party's CPF lump (Section 2) were paid from the staying party's CPF — overstates if cash was used. Key the exact figure from the CPF Property Withdrawal statement to override.</p>
+          <label>Staying Party's Monthly CPF Toward the Mortgage ($) — optional override</label><input id="stCpfMonthly" type="number" placeholder="blank = estimated from income above"><p class="hint">Key the exact monthly CPF deduction if known — it overrides the income-based estimate. Same rule as the exiting party's override in Section 2.</p>
           <button class="ghost" style="padding:9px 16px;font-size:13px;margin-top:4px" onclick="estStayCpf()">Compute &amp; Fill Above ↑</button>
           <p class="hint" id="stCpfEstOut" style="margin-top:8px"></p>
         </div>
@@ -651,18 +653,18 @@ const $=id=>document.getElementById(id);
 let G=null;  // last computed {rows,stay,exit,rec} for click-to-select
 let nextLegal=3000;   // adjustable legal/conveyancing on the EXITING party's NEXT purchase
 let affordOpen=false; // keep the cost-breakdown panel open across re-renders
-/* MATRIX_START — auto-generated by ura_update.py 2026-07-29 */
+/* MATRIX_START — auto-generated by ura_update.py 2026-06-23 */
 const MATRIX={
-  OCR:{"1BR":{p:818000,n:784},"2BR":{p:1190000,n:1488},"3BR":{p:1540000,n:2331},"4BR":{p:1900000,n:2312}},
-  RCR:{"1BR":{p:925000,n:589},"2BR":{p:1500000,n:942},"3BR":{p:1955000,n:814},"4BR":{p:2500000,n:959}},
-  CCR:{"1BR":{p:1085000,n:231},"2BR":{p:1540000,n:389},"3BR":{p:2238000,n:427},"4BR":{p:3050000,n:538}}
+  OCR:{"1BR":{p:810000,n:1199},"2BR":{p:1150000,n:1886},"3BR":{p:1520000,n:4494},"4BR":{p:1900000,n:2835}},
+  RCR:{"1BR":{p:918000,n:919},"2BR":{p:1474000,n:1114},"3BR":{p:1904000,n:1657},"4BR":{p:2510000,n:1205}},
+  CCR:{"1BR":{p:1090000,n:344},"2BR":{p:1500000,n:472},"3BR":{p:2230000,n:796},"4BR":{p:3080000,n:712}}
 };
 /* MATRIX_END */
-/* NEWLAUNCH_START — auto-generated by ura_update.py 2026-07-29 */
+/* NEWLAUNCH_START — auto-generated by ura_update.py 2026-06-23 */
 const NEWLAUNCH={
-  OCR:{"1BR":{p:1136000,n:206},"2BR":{p:1606000,n:1967},"3BR":{p:1897000,n:2696},"4BR":{p:2701000,n:1492}},
-  RCR:{"1BR":{p:1434000,n:251},"2BR":{p:1937000,n:1422},"3BR":{p:2720000,n:932},"4BR":{p:3578000,n:805}},
-  CCR:{"1BR":{p:1550000,n:512},"2BR":{p:2184000,n:1092},"3BR":{p:3058000,n:514},"4BR":{p:3968000,n:220}}
+  OCR:{"1BR":{p:1164000,n:378},"2BR":{p:1618000,n:2749},"3BR":{p:1891000,n:4774},"4BR":{p:2723000,n:1752}},
+  RCR:{"1BR":{p:1339000,n:590},"2BR":{p:1912000,n:1943},"3BR":{p:2709000,n:1618},"4BR":{p:3594000,n:982}},
+  CCR:{"1BR":{p:1538000,n:552},"2BR":{p:2133000,n:1076},"3BR":{p:2922000,n:687},"4BR":{p:4215000,n:221}}
 };
 /* NEWLAUNCH_END */
 const n=v=>{v=parseFloat(String(v).replace(/,/g,''));return isNaN(v)?0:v;};
@@ -757,7 +759,10 @@ function run(){
 
   // ---- staying party: income capacity (the new restructured loan is computed per split) ----
   const stMaxLoan=maxLoanTDSR(stInc,stDebt,stAge,stress,tdsr,stTenure);  // max loan their income supports (stressed, chosen tenure)
-  const stLtvCap=0.75*V;                                        // 75% LTV ceiling on the whole property
+  // MAS rule: 75% LTV needs tenure ≤ 30 yrs AND age + tenure ≤ 65 — otherwise LTV drops to 55% (and min cash rises to 10%)
+  const ltvBreach=stAge>0 && ((stAge+tenure(stAge,stTenure))>65 || tenure(stAge,stTenure)>30);
+  const ltvPct=ltvBreach?0.55:0.75;
+  const stLtvCap=ltvPct*V;                                      // LTV ceiling on the whole property
   const stLiquidity=stCash+exCash+stCpf;   // married couple: pool BOTH parties' cash + the staying party's CPF (CPF cannot cross between people)
   const cashKnown=stLiquidity>0;   // if any household liquidity entered, the buyout funding becomes a real gate for the recommendation
 
@@ -833,7 +838,7 @@ function run(){
     }
   }
 
-  const stay={stMaxLoan,L,V,E,stLiquidity,stLtvCap,actualRate,stress,tdsr,stAge,stInc,stDebt,partLoanPct,minCashPct,stRes,stTenure,name:stName,pn:pn(stGender)};
+  const stay={stMaxLoan,L,V,E,stLiquidity,stLtvCap,ltvBreach,ltvPct,actualRate,stress,tdsr,stAge,stInc,stDebt,partLoanPct,minCashPct,stRes,stTenure,name:stName,pn:pn(stGender)};
   const exit={exMaxLoanTDSR,exAge,nextOnly,exRes,sr,hold,V,L,minCashPct,intendedPrice,name:exName,exCash,legal:nextLegal,pn:pn(exGender)};
   G={rows,stay,exit,rec,reason:recReason,cashKnown,activeBudget:(rec||rows[0]).exBudget};
   const role=assessRoles({stName,exName,stInc,stDebt,stAge,stCash,stCpf,stCpfUsed:stCpfR100,stRes,exInc,exDebt,exAge,exCash,exRes,exCpfR100,L,stress,tdsr}); G.role=role;
@@ -1254,7 +1259,7 @@ function renderTable(rows,rec){
 }
 
 function renderStayMin(stay,row){
-  const af=annuity(stay.stAge,stay.stress);
+  const af=annuity(stay.stAge,stay.stress,stay.stTenure);   // MUST use the chosen tenure — matches stMaxLoan/stInstal
   const targetLoan=Math.min(row.desiredNewLoan,stay.stLtvCap);     // the new restructured loan (LTV-capped)
   const minAvail=targetLoan/af;
   const minIncome=(minAvail+stay.stDebt)/(stay.tdsr/100);          // income to service the new restructured loan
@@ -1274,6 +1279,7 @@ function renderStayMin(stay,row){
         <div class="kv"><span class="k">Min Gross Monthly Income Needed${stay.stDebt>0?` (with ${fmt(stay.stDebt)} debts)`:''}</span><span class="v">${fmt(minIncome)}/mo</span></div>
         <div class="kv"><span class="k">${stay.name}'s Income</span><span class="v">${fmt(stay.stInc)}/mo</span></div>
         <div class="kv"><span class="k">Status</span><span class="v">${meets?'<span class="pill ok">Qualifies</span>':'<span class="pill no">Short '+fmt(incomeGap)+'/mo</span>'}</span></div>
+        ${stay.ltvBreach?`<div class="note" style="border-left-color:var(--bad)"><b>Tenure breaches the 75% LTV rules.</b> At age ${stay.stAge}, a ${tenure(stay.stAge,stay.stTenure)}-yr tenure pushes age + tenure past 65, so the bank's LTV drops to <b>55%</b> (and the minimum cash downpayment rises to 10%). The new loan above is already capped at 55% of value — shorten the tenure to ${Math.max(5,65-stay.stAge)} yrs or less to restore 75%.</div>`:''}
         ${row.loanLimited?`<div class="note" style="border-left-color:var(--bad)">Income/LTV caps the loan below the standard ${stay.partLoanPct}% — so the cash downpayment rises (shown right).</div>`:''}
       </div>
       <div>
@@ -1312,7 +1318,7 @@ function renderDetails(stay,exit,row,hasRec){
     <div class="kv"><span class="k">Retained Loan (Staying Party's ${100-row.X}% Share)</span><span class="v">${fmt(row.retainedLoan)}</span></div>
     <div class="kv"><span class="k">+ Part-Purchase Loan</span><span class="v">${fmt(row.partLoan)}</span></div>
     <div class="kv"><span class="k"><b>New Restructured Loan</b></span><span class="v">${fmt(row.newTotalLoan)}</span></div>
-    <div class="kv"><span class="k">Monthly Instalment @ ${stay.actualRate}% over ${tenure(stay.stAge)} yrs</span><span class="v">${fmt(row.stInstal)}/mo</span></div>
+    <div class="kv"><span class="k">Monthly Instalment @ ${stay.actualRate}% over ${tenure(stay.stAge,stay.stTenure)} yrs</span><span class="v">${fmt(row.stInstal)}/mo</span></div>
     <div class="kv"><span class="k">Max Loan Income Supports (TDSR @ ${stay.stress}% Stress)</span><span class="v">${fmt(stay.stMaxLoan)}</span></div>
     <div class="kv"><span class="k">Income Covers This Loan?</span><span class="v">${incomeOk?'<span class="pill ok">Yes</span>':'<span class="pill no">No</span>'}</span></div>
     <div class="kv"><span class="k">Cash + CPF on Hand vs Outlay</span><span class="v">${row.stCanFund?'<span class="pill ok">Enough</span>':'<span class="pill no">Short '+fmt(row.stOutlay-stay.stLiquidity)+'</span>'}</span></div>`;
@@ -1346,15 +1352,48 @@ function swapParties(){
   if($('results') && $('results').style.display==='block') run();
 }
 function estStayCpf(){
-  const price=n($('stCpfPrice').value)||n($('valPrice').value)||n($('propVal').value);
-  const loan=n($('propLoan').value);
-  const exC=n($('exCpfRefund100').value);
-  const equityPaid=Math.max(0,price-loan);
-  const est=Math.max(0,equityPaid-exC);
-  if($('stCpfRefund100')) $('stCpfRefund100').value=addCommas(Math.round(est));
-  if($('stCpfEstOut')) $('stCpfEstOut').innerHTML = price>0
-    ? `Estimated staying-party CPF ≈ <b>${fmt(est)}</b> — equity paid in (price ${fmt(price)} − outstanding loan ${fmt(loan)} = ${fmt(equityPaid)}) minus the exiting party's CPF ${fmt(exC)}. Overstates if cash was used; refine with the manual field.`
-    : `Enter the purchase price (or fill Section 1) to estimate.`;
+  // MIRRORS the exiting party's estimator (Section 2): same cpfAccrual engine, same Section 1 property
+  // inputs, applied to the staying party's COMPLEMENTARY share. If the roles ever swap, this figure is
+  // already the full CPF + accrued interest refund sum, computed the same way as the exiting party's.
+  const Y=n($('holdYears').value)||3;
+  const mode=$('cpfMode')?$('cpfMode').value:'resale';
+  const pc=purchaseCosts();
+  if(pc.price<=0){
+    if($('stCpfEstOut')) $('stCpfEstOut').innerHTML=`Fill in Section 1 first — this estimator reuses the same purchase price, loan and construction inputs as the exiting party's estimator (Section 2). Open Section 1's value estimator and enter the <b>Purchase Price</b>.`;
+    return;
+  }
+  // CPF at purchase — the CPF-payable purchase costs not covered by the exiting party's lump (Section 2), unless keyed manually
+  const exLump=n($('cpfLump').value);
+  const lumpOverride=n($('stCpfLump').value);
+  const lump=lumpOverride>0?lumpOverride:Math.max(0,pc.maxCpf-exLump);
+  // staying party's CPF-OA flow during the hold (their avg income & avg age over the period — mirror of cpfEffIncome/cpfEffAge)
+  const incRaw=n($('stCpfIncome').value), inc=incRaw>0?incRaw:n($('stIncome').value);
+  const avgAge=Math.max(16,Math.round((n($('stAge').value)||35)-Y/2));
+  const oa=oaRate(avgAge)*Math.min(inc,8000);
+  const stOverride=n($('stCpfMonthly')?$('stCpfMonthly').value:0);   // staying party's keyed monthly override
+  const exOverride=n($('cpfMonthly').value);                          // exiting party's keyed override (Section 2)
+  let o, r;
+  if(mode==='progressive'){
+    const exShare=(n($('cpfShare').value)||50)/100;
+    const exPost=exOverride>0?exOverride:oaMonthly();   // exiting party's post-TOP monthly — engine caps the staying party at the instalment remainder
+    o={share:Math.max(0,1-exShare),oaMonthly:oa,otherMonthly:exPost,postManual:stOverride,monthlyManual:0};
+    r=cpfAccrual(Y,lump,mode,o);
+  } else {
+    // resale — same income-based method as Section 2: staying party gets the instalment part the exiting party isn't paying, capped at their OA flow
+    const instalFull=resaleInstalment();
+    const exMonthly=exOverride>0?exOverride:(instalFull>0?Math.min(oaMonthly(),instalFull):oaMonthly());
+    const stMonthly=stOverride>0?stOverride:(instalFull>0?Math.min(Math.max(0,instalFull-exMonthly),oa):oa);
+    o={share:0,oaMonthly:0,otherMonthly:0,postManual:0,monthlyManual:stMonthly};
+    r=cpfAccrual(Y,lump,mode,o);
+  }
+  const total=r.total, accrued=total-Math.round(r.prin);
+  if($('stCpfRefund100')) $('stCpfRefund100').value=addCommas(total);
+  const stSrc=stOverride>0?'keyed override':"est. from income & age, capped at the instalment left after the exiting party's part";
+  const modeTxt = mode==='progressive'
+    ? `progressive — CPF at purchase ${fmt(lump)} + ${Math.round(o.share*100)}% construction mortgage (principal + interest) ${fmt(Math.round(r.constrCPF))} + post-TOP CPF ${fmt(Math.round(r.postCPF))} (${fmt(Math.round(r.oaUsed))}/mo, ${stSrc})`
+    : `resale — CPF at purchase ${fmt(lump)} + ${fmt(Math.round(r.oaUsed))}/mo CPF toward the instalment (${stSrc})`;
+  if($('stCpfEstOut')) $('stCpfEstOut').innerHTML =
+    `<b>Same method as Section 2</b>, over ${Y} yrs (${modeTxt}): principal ${fmt(Math.round(r.prin))} + accrued interest ${fmt(accrued)} = <b>${fmt(total)}</b> &nbsp;→ filled above. ${lumpOverride>0?'':`Assumes the CPF-payable purchase costs not covered by the exiting party's CPF (${fmt(exLump)}) were paid from the staying party's CPF — overstates if cash was used; key the exact statement figure in the override field for precision.`}`;
   const _dS=$('stCpfEstOut')?$('stCpfEstOut').closest('details'):null; if(_dS)_dS.open=false; if($('stCpfRefund100'))$('stCpfRefund100').scrollIntoView({behavior:'smooth',block:'center'});
   if($('results') && $('results').style.display==='block') run();
 }
@@ -1429,8 +1468,8 @@ function estLoan(){
 function cpfModeUI(){
   const prog=$('cpfMode') && $('cpfMode').value==='progressive';
   ['cpfProgTop','cpfProgMid','cpfProgBottom'].forEach(id=>{ if($(id)) $(id).style.display=prog?'block':'none'; });
-  if($('cpfResaleMonthly')) $('cpfResaleMonthly').style.display=prog?'none':'block';
-  if(prog){ bdModeUI(); refreshOA(); costsAtPurchase(); }
+  if(prog){ bdModeUI(); costsAtPurchase(); }
+  refreshOA();   // the income-based OA estimate now applies in BOTH modes
 }
 // CPF Ordinary Account allocation rate by age (share of wage that lands in OA)
 // Buyer's Stamp Duty — residential tiers (current 2026, unchanged since 15 Feb 2023)
@@ -1447,14 +1486,20 @@ function bdModeUI(){
   if($('bdManualRow')) $('bdManualRow').style.display=manual?'block':'none';
   if($('bdExCpfRow')) $('bdExCpfRow').style.display=manual?'none':'flex';   // input itself shows the figure in manual mode
 }
-// Upfront-cost breakdown at purchase (pulls price + loan% from Section 1)
-function costsAtPurchase(){
-  if(!$('bdTotal'))return;
+// Shared purchase-cost figures (pulls price + loan% from Section 1) — used by the cost breakdown AND both CPF estimators
+function purchaseCosts(){
   const price=n($('valPrice').value), loanPct=(n($('loanPct').value)||75)/100;
   const downPct=Math.max(0,1-loanPct), down=price*downPct;
   const cash=price*0.05, cpfDp=Math.max(0,down-cash);   // 5% booking is cash; rest cash/CPF
   const b=bsd(price), legal=n($('bdLegal').value)||0;
-  const total=down+b+legal;
+  return {price,loanPct,downPct,down,cash,cpfDp,b,legal,total:down+b+legal,maxCpf:cpfDp+b+legal};
+}
+// Upfront-cost breakdown at purchase
+function costsAtPurchase(){
+  if(!$('bdTotal'))return;
+  const pc=purchaseCosts();
+  const price=pc.price, downPct=pc.downPct, down=pc.down, cash=pc.cash, cpfDp=pc.cpfDp, b=pc.b, legal=pc.legal;
+  const total=pc.total;
   const mode=$('bdMode')?$('bdMode').value:'pct';
   let exCpf;
   if(mode==='manual'){ exCpf=Math.round(n($('bdManual').value)); }
@@ -1487,26 +1532,28 @@ function refreshOA(){
     else { $('cpfOAnote').innerHTML=`= <b>${(r*100).toFixed(0)}%</b> CPF-OA allocation (avg age <b>${age}</b> over the hold) × capped salary <b>${fmt(cap)}</b> (Ordinary Wage ceiling $8,000, current for 2026). Brackets: ≤35 → 23%, &gt;35–45 → 21%, &gt;45–50 → 19%, &gt;50–55 → 15%.`; }
   }
 }
-function estCpf(){
-  const Y=n($('holdYears').value)||3;
-  const C0=n($('cpfLump').value), Cm=n($('cpfMonthly').value);
-  const mode=$('cpfMode')?$('cpfMode').value:'resale';
+// ---- shared CPF-accrual engine — used by BOTH parties' estimators so the figures are computed identically ----
+// Y: holding years · lump: CPF at purchase · mode: 'resale'|'progressive'
+// o.share: this party's share of the construction-phase instalment (progressive)
+// o.oaMonthly: this party's monthly CPF-OA flow post-TOP (progressive)
+// o.otherMonthly: the OTHER party's post-TOP monthly CPF — this party is capped at the instalment remainder
+// o.monthlyManual: this party's monthly CPF toward the instalment (resale)
+function cpfAccrual(Y,lump,mode,o){
   const nM=Math.max(1,Math.round(Y*12));
   const mfac=Math.pow(1.025,1/12);           // monthly compounding factor for 2.5% p.a.
-  const fvLump=C0*Math.pow(1.025,Y);         // downpayment + BSD leaves at purchase
-  let prin=C0, fvMonthly=0, constrCPF=0, postCPF=0, oaUsed=0;
+  const fvLump=lump*Math.pow(1.025,Y);       // downpayment + BSD leaves at purchase
+  let prin=lump, fvMonthly=0, constrCPF=0, postCPF=0, oaUsed=0, instal=0;
   if(mode==='progressive'){
     const loanPct=(n($('loanPct').value)||75)/100;
     const loan=n($('loanOrig').value)||(n($('valPrice').value)*loanPct);   // pulled from Section 1 (Property Snapshot)
     const phaseY=n($('loanPhase').value)||4;                               // construction phase from Section 1
     const Mc=Math.min(nM,Math.max(1,Math.round(phaseY*12)));   // construction months (capped at hold)
     const cRate=((n($('cpfConstrRate').value)||1.5)/100)/12;   // construction floating rate, monthly
-    const cpfShare=(n($('cpfShare').value)||50)/100;           // exiting party's share of the mortgage during construction
     const tenureM=Math.max(1,Math.round((n($('loanTenureYrs').value)||30)*12));
     const cAf=cRate>0? cRate/(1-Math.pow(1+cRate,-tenureM)) : 1/tenureM;   // full-tenure amortisation factor at the construction rate
     // Construction (pre-TOP): JND progressive-payment method — same as the loan estimator. The loan disburses in
     // stages; each month the FULL instalment (principal + interest) is paid on the gross cumulative drawn balance.
-    // The exiting party funds their share via CPF. (Principal portion matches the loan estimator; interest added.)
+    // This party funds o.share of it via CPF. (Principal portion matches the loan estimator; interest added.)
     const PRE=[[0,10],[0.066667,10],[0.133333,10],[0.066667,3],[0.066667,3],[0.066667,6],[0.066667,6]];
     const cScale=(phaseY*12)/48;   // fit the canonical 48-month pre-TOP schedule into the build period
     let cum=0, cm=0;
@@ -1519,33 +1566,58 @@ function estCpf(){
       for(let m=0;m<dur && cm<Mc;m++){
         cm++;
         const interest=b*cRate, pr=Math.max(0,MI-interest); b-=pr;
-        const herCPF=cpfShare*(interest+pr);             // share of the full instalment (principal + interest)
-        constrCPF+=herCPF; prin+=herCPF;
-        fvMonthly+=herCPF*Math.pow(mfac,nM-cm);
+        const pay=o.share*(interest+pr);                 // share of the full instalment (principal + interest)
+        constrCPF+=pay; prin+=pay;
+        fvMonthly+=pay*Math.pow(mfac,nM-cm);
       }
     }
-    // From TOP to decoupling: her monthly CPF = her OA contribution (age/income based), capped at the actual instalment.
-    const oa=oaMonthly();
+    // From TOP to decoupling: monthly CPF = this party's OA flow, capped at the instalment left after the other party's part.
     const pRate=((n($('cpfPostRate').value)||2)/100)/12;
     const remM=Math.max(60,Math.round((30-phaseY)*12));        // assume a 30-yr original loan
-    const instal=pRate>0? loan*pRate/(1-Math.pow(1+pRate,-remM)) : loan/remM;
-    oaUsed=Math.min(oa,instal);
+    instal=pRate>0? loan*pRate/(1-Math.pow(1+pRate,-remM)) : loan/remM;
+    oaUsed=(o.postManual>0)?o.postManual:Math.min(o.oaMonthly,Math.max(0,instal-(o.otherMonthly||0)));   // keyed override beats the income estimate
     for(let t=Mc+1;t<=nM;t++){
       postCPF+=oaUsed; prin+=oaUsed;
       fvMonthly+=oaUsed*Math.pow(mfac,nM-t);
     }
-    refreshOA();
   } else {
-    const i=mfac-1;
+    const i=mfac-1, Cm=o.monthlyManual||0;
+    oaUsed=Cm;
     fvMonthly=Cm*(i>0?((Math.pow(1+i,nM)-1)/i):nM);   // full instalment from day one
     prin+=Cm*nM;
   }
-  const total=Math.round(fvLump+fvMonthly);
+  return {total:Math.round(fvLump+fvMonthly),prin,constrCPF,postCPF,oaUsed,instal};
+}
+// full monthly instalment on the Section 1 loan (resale, from day one) — caps the income-based CPF flow
+function resaleInstalment(){
+  const pc=purchaseCosts();
+  const loanP=n($('loanOrig').value)||(pc.price*pc.loanPct);
+  const rr=((n($('loanRate').value)||2)/100)/12, tm=Math.max(1,Math.round((n($('loanTenureYrs').value)||30)*12));
+  return loanP>0?(rr>0?loanP*rr/(1-Math.pow(1+rr,-tm)):loanP/tm):0;
+}
+function estCpf(){
+  const Y=n($('holdYears').value)||3;
+  const C0=n($('cpfLump').value), Cm=n($('cpfMonthly').value);   // Cm = optional keyed override
+  const mode=$('cpfMode')?$('cpfMode').value:'resale';
+  let o;
+  if(mode==='progressive'){
+    o={share:(n($('cpfShare').value)||50)/100,oaMonthly:oaMonthly(),otherMonthly:0,postManual:Cm,monthlyManual:0};
+  } else {
+    // resale — SAME income-based method as new launch: OA flow (avg income & age), capped at the instalment; keyed override wins
+    const instalFull=resaleInstalment();
+    const est=instalFull>0?Math.min(oaMonthly(),instalFull):oaMonthly();
+    o={share:0,oaMonthly:0,otherMonthly:0,postManual:0,monthlyManual:Cm>0?Cm:est};
+  }
+  const r=cpfAccrual(Y,C0,mode,o);
+  refreshOA();
+  const constrCPF=r.constrCPF, postCPF=r.postCPF, oaUsed=r.oaUsed, prin=r.prin;
+  const total=r.total;
   const accrued=total-Math.round(prin);
   $('exCpfRefund100').value=addCommas(total);
+  const srcTxt=Cm>0?'keyed override':'est. from income & age, capped at the instalment';
   const modeTxt = mode==='progressive'
-    ? `progressive — downpayment ${fmt(C0)} + ${Math.round(n($('cpfShare').value)||50)}% construction mortgage (principal + interest) ${fmt(Math.round(constrCPF))} + post-TOP CPF ${fmt(Math.round(postCPF))} (OA ${fmt(Math.round(oaUsed))}/mo)`
-    : `resale — full instalment from day one`;
+    ? `progressive — downpayment ${fmt(C0)} + ${Math.round(n($('cpfShare').value)||50)}% construction mortgage (principal + interest) ${fmt(Math.round(constrCPF))} + post-TOP CPF ${fmt(Math.round(postCPF))} (${fmt(Math.round(oaUsed))}/mo, ${srcTxt})`
+    : `resale — CPF at purchase ${fmt(C0)} + ${fmt(Math.round(oaUsed))}/mo CPF toward the instalment (${srcTxt})`;
   $('cpfEstOut').innerHTML=`Over ${Y} yrs (${modeTxt}): principal ${fmt(Math.round(prin))} + accrued interest ${fmt(accrued)} = <b>${fmt(total)}</b> &nbsp;→ filled above.`;
   const _dC=$('cpfEstOut').closest('details'); if(_dC)_dC.open=false; if($('exCpfRefund100'))$('exCpfRefund100').scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -1564,8 +1636,7 @@ function tenureInput(val){
 function maxAffordablePrice(funds,cashBucket,Lmax,res,onlyProp,minCashPct,legal){
   let best=0;
   for(let P=300000;P<=8000000;P+=10000){
-    const loan=Math.min(Lmax,0.75*P);
-    if(loan<=0)continue;
+    const loan=Math.max(0,Math.min(Lmax,0.75*P));   // loan may be 0 — a pure-cash buyer (no income) can still afford a purchase
     const need=P+bsd(P)+absd(P,res,onlyProp)+(legal||0);   // price + BSD + ABSD + legal fee on the next purchase
     const cashNeeded=need-loan;
     if(funds>=cashNeeded && cashBucket>=P*(minCashPct/100)) best=P;
@@ -1705,7 +1776,7 @@ function renderAdvisory(rec,reason,rows,sr,hold){
   $('advisory').innerHTML=html;
 }
 // money inputs: live thousands separators (commas) for easy reading
-const MONEY=['propVal','valPrice','propLoan','loanOrig','exIncome','exDebt','exCash','exCpf','exCpfRefund100','cpfLump','cpfIncome','cpfMonthly','bdManual','intendedPrice','stIncome','stDebt','stCash','stCpf','stCpfRefund100','stCpfPrice','legal','psVal','psLoan','psExCpf','psExCash','psExCpfBal','psExInc','psExDebt','psStLegal','psStOther','psPenalty','psExLegal','psExOther'];
+const MONEY=['propVal','valPrice','propLoan','loanOrig','exIncome','exDebt','exCash','exCpf','exCpfRefund100','cpfLump','cpfIncome','cpfMonthly','bdManual','intendedPrice','stIncome','stDebt','stCash','stCpf','stCpfRefund100','stCpfIncome','stCpfLump','stCpfMonthly','legal','psVal','psLoan','psExCpf','psExCash','psExCpfBal','psExInc','psExDebt','psStLegal','psStOther','psPenalty','psExLegal','psExOther'];
 function addCommas(s){s=String(s).replace(/[^0-9]/g,'');return s?parseInt(s,10).toLocaleString('en-SG'):'';}
 let CURRENT_VIEW='home';
 function showView(v){
