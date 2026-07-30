@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-URA benchmark updater for the Decoupling Calculator.
+URA benchmark updater for the Decoupling Toolkit.
 
 What it does
 ------------
-1. Reads your URA Access Key from `ura_key.txt` (same folder) — never hard-coded.
+1. Reads the URA Access Key from the URA_ACCESS_KEY env var (GitHub Actions) or
+   `ura_key.txt` (local, gitignored).
 2. Requests a daily Token from the URA Data Service.
 3. Pulls the latest private residential transactions (PMI_Resi_Transaction, 4 batches).
-4. For every project in your curated `ura_projects.json` shortlist, computes a realistic
-   ENTRY price (20th-percentile of recent transacted prices) and regenerates the
-   `const PROJECTS = [...]` shortlist embedded in Decoupling_Calculator.html.
-5. Also refreshes the OCR/RCR/CCR PSF guides (psfOCR/psfRCR/psfCCR) used by the size table.
+4. Rebuilds the two price matrices embedded in Decoupling_Calculator.html:
+   MATRIX (resale, 70+ yrs lease / freehold) and NEWLAUNCH — median transacted
+   price over the last 12 months, by region (OCR/RCR/CCR) x bedroom band (by size).
 
-Run it manually, or schedule it Tue/Fri — see URA_UPDATE_SETUP.md.
+Normally run by the GitHub Action "Update URA benchmarks" (daily 7:30pm SGT),
+which then copies Decoupling_Calculator.html to index.html and commits.
 
-NOTE: parsing follows URA's documented field names. If a first run looks empty/odd,
+NOTE: parsing follows URA's documented field names. If a run looks empty/odd,
 paste the console output back and it can be tuned in minutes.
 """
 
@@ -24,12 +25,10 @@ from statistics import median
 
 HERE          = os.path.dirname(os.path.abspath(__file__))
 KEY_FILE      = os.path.join(HERE, "ura_key.txt")
-PROJECTS_FILE = os.path.join(HERE, "ura_projects.json")
 CALC_HTML     = os.path.join(HERE, "Decoupling_Calculator.html")
 
 MONTHS_BACK   = 12         # look-back window for transactions
-ENTRY_PCTILE  = 0.20       # 20th percentile of a project's recent prices = realistic entry unit
-APPR_OVERRIDE = 3.5        # appreciation % written to the calculator. Set to None to use the URA-computed CAGR instead.
+ENTRY_PCTILE  = 0.20       # percentile used for the informational PSF log line
 MIN_LEASE_YEARS = 70       # only include units with at least this many years of lease remaining (freehold always qualifies)
 TOKEN_URL     = "https://eservice.ura.gov.sg/uraDataService/insertNewToken/v1"
 DATA_URL      = "https://eservice.ura.gov.sg/uraDataService/invokeUraDS/v1?service=PMI_Resi_Transaction&batch={batch}"
@@ -171,16 +170,6 @@ def percentile(vals, p):
     return s[f] + (s[c] - s[f]) * (k - f)
 
 
-def existing_prices(html):
-    """Parse current PROJECTS entry prices so projects with no recent data keep their last price."""
-    m = re.search(r'/\* PROJECTS_START.*?(const PROJECTS=\[.*?\];).*?/\* PROJECTS_END \*/', html, re.S)
-    res = {}
-    if m:
-        for nm, price in re.findall(r'name:"([^"]+)"[^}]*?entry:(\d+)', m.group(1)):
-            res[nm.upper().strip()] = int(price)
-    return res
-
-
 # Floor-area bands (sqm) -> bedroom label, for the resale price matrix.
 BED_BANDS = [("1BR", 35, 55), ("2BR", 55, 80), ("3BR", 80, 105), ("4BR", 105, 150)]
 
@@ -197,7 +186,7 @@ def _matrix(prices_by_region):
                   for b, v in beds.items()} for reg, beds in prices_by_region.items()}
 
 
-def compute(tx, projects):
+def compute(tx):
     # Both tables are market-wide URA transactions, grouped by URA market segment (OCR/RCR/CCR) and bedroom band.
     tx = [t for t in tx if t["ptype"] in PRIVATE_TYPES and recent(t["cd"])]
 
@@ -234,32 +223,8 @@ def inject_bedmatrix(html, data, name):
     return new, n > 0
 
 
-def set_field(html, el_id, text):
-    """Replace the value="..." of an input (handles integers and decimals)."""
-    if text is None:
-        return html, False
-    pat = re.compile(r'(id="' + re.escape(el_id) + r'"[^>]*?value=")[0-9.]+(")')
-    new, n = pat.subn(lambda m: m.group(1) + str(text) + m.group(2), html, count=1)
-    return new, n > 0
-
-
-def set_field(html, el_id, text):
-    """Replace the value="..." of an input (handles integers and decimals)."""
-    if text is None:
-        return html, False
-    pat = re.compile(r'(id="' + re.escape(el_id) + r'"[^>]*?value=")[0-9.]+(")')
-    new, n = pat.subn(lambda m: m.group(1) + str(text) + m.group(2), html, count=1)
-    return new, n > 0
-
-
 def main():
     key = read_key()
-
-    if not os.path.exists(PROJECTS_FILE):
-        sys.exit("ura_projects.json not found.")
-    pj = json.load(open(PROJECTS_FILE, encoding="utf-8"))
-    projects = pj.get("projects", [])
-    print(f"Shortlist: {len(projects)} projects")
 
     print("Requesting token…");      token = get_token(key)
     print("Pulling transactions…");  recs = pull_transactions(key, token)
@@ -270,31 +235,25 @@ def main():
         sys.exit("Decoupling_Calculator.html not found next to this script.")
     html = open(CALC_HTML, encoding="utf-8").read()
 
-    matrix, newlaunch, psf, nused = compute(tx, projects)
-    appr = appreciation([t for t in tx if t["ptype"] in PRIVATE_TYPES])    # full 5-yr span
+    matrix, newlaunch, psf, nused = compute(tx)
+    appr = appreciation([t for t in tx if t["ptype"] in PRIVATE_TYPES])    # full transaction span
     print(f"Using {nused} recent private transactions (last {MONTHS_BACK} months)")
-    for title, mx in (("Resale (shortlist)", matrix), ("New launch (market-wide)", newlaunch)):
+    for title, mx in (("Resale (market-wide)", matrix), ("New launch (market-wide)", newlaunch)):
         print(f"  {title} — region x bedroom:")
         for reg in ("OCR", "RCR", "CCR"):
             cells = "  ".join(f"{b}:{('$'+format(mx[reg][b]['p'],',')) if mx[reg][b]['p'] else '—':>11}({mx[reg][b]['n']})" for b, _, _ in BED_BANDS)
             print(f"    {reg}  {cells}")
-    print("  PSF / region          :", psf)
-    print("  Annual appreciation    :", f"{appr}%/yr (URA, full transaction span)" if appr is not None else "n/a")
+    print("  Entry PSF / region (info only):", psf)
+    print("  Annual appreciation (info only):", f"{appr}%/yr (URA, full transaction span)" if appr is not None else "n/a")
 
     html, ok1 = inject_bedmatrix(html, matrix, "MATRIX")
     html, ok2 = inject_bedmatrix(html, newlaunch, "NEWLAUNCH")
     print("Resale matrix:", "updated" if ok1 else "MARKERS NOT FOUND", "| New-launch matrix:", "updated" if ok2 else "MARKERS NOT FOUND")
-    pcount = 0
-    for el, val in [("psfOCR", psf["OCR"]), ("psfRCR", psf["RCR"]), ("psfCCR", psf["CCR"])]:
-        html, done = set_field(html, el, str(int(val)) if val is not None else None)
-        pcount += 1 if done else 0
-    rate = APPR_OVERRIDE if APPR_OVERRIDE is not None else appr
-    if rate is not None:
-        html, _ = set_field(html, "apprRate", f"{rate:.1f}")
-        print(f"  Appreciation written   : {rate:.1f}%/yr" + (" (locked override)" if APPR_OVERRIDE is not None else " (URA-computed)"))
+    if not (ok1 and ok2):
+        sys.exit("Matrix markers not found in Decoupling_Calculator.html — aborting without writing.")
 
     open(CALC_HTML, "w", encoding="utf-8").write(html)
-    print(f"Updated resale + new-launch matrices + {pcount}/3 PSF guides + appreciation rate at {datetime.now():%Y-%m-%d %H:%M}.")
+    print(f"Updated resale + new-launch matrices at {datetime.now():%Y-%m-%d %H:%M}.")
 
 
 if __name__ == "__main__":
