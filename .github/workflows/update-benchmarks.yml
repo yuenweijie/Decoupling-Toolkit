@@ -2,11 +2,15 @@ name: Update URA benchmarks
 
 on:
   schedule:
-    - cron: "30 11 * * *"   # daily 11:30 UTC = 7:30pm Singapore time
-  workflow_dispatch:          # also lets you run it manually from the Actions tab
+    - cron: "30 11 * * *"      # daily 11:30 UTC = 7:30pm Singapore time
+  workflow_dispatch:            # also lets you run it manually from the Actions tab
 
 permissions:
   contents: write
+
+concurrency:
+  group: ura-update
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -28,16 +32,21 @@ jobs:
       - name: Publish a clean root page
         run: cp Decoupling_Calculator.html index.html
 
-      - name: Commit if anything changed
+      - name: Stamp the update date
+        run: date -u +%Y-%m-%d > last_updated.txt
+
+      - name: Commit and push (pull first to avoid rejects)
         run: |
-          git config user.name "ura-bot"
+          git config user.name  "ura-bot"
           git config user.email "ura-bot@users.noreply.github.com"
-          echo "$(date -u +%Y-%m-%d)" > last_updated.txt
           git add Decoupling_Calculator.html index.html last_updated.txt
-          git diff --staged --quiet || git commit -m "Auto-update URA benchmarks ($(date -u +%Y-%m-%d))"
+          git diff --staged --quiet && echo "No changes." && exit 0
+          git commit -m "Auto-update URA benchmarks ($(date -u +%Y-%m-%d))"
+          git pull --rebase origin main
           git push
 
       - name: Purge jsDelivr cache
+        if: always()
         run: |
           curl -s "https://purge.jsdelivr.net/gh/yuenweijie/Decoupling-Toolkit@main/last_updated.txt" || true
           curl -s "https://purge.jsdelivr.net/gh/yuenweijie/Decoupling-Toolkit@main/index.html" || true
