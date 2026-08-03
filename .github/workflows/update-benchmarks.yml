@@ -1,5 +1,25 @@
 name: Update URA benchmarks
 
+# ─────────────────────────────────────────────────────────────────────────────
+# HOW TO APPLY THIS FILE
+# Your push script deliberately cannot update workflow files (that needs a token
+# with 'workflow' scope). So paste this by hand, once:
+#
+#   1. Go to github.com/yuenweijie/Decoupling-Toolkit
+#   2. Open .github/workflows/update-benchmarks.yml
+#   3. Click the pencil icon, select all, paste this in, Commit changes
+#
+# WHAT CHANGED vs the previous version
+#   • Pulls before pushing, with retries — a manual push landing in the same
+#     window no longer kills the run (this is what broke it on 31 Jul 2026).
+#   • Only one run at a time — no two runs racing to push.
+#   • Opens a GitHub issue if the run fails, so a silent breakage becomes visible
+#     without waiting for the nightly monitor.
+#   • Drops the jsDelivr purge — the toolkit is served by GitHub Pages, not
+#     jsDelivr, and the unreliable purge was the source of a false stale-data
+#     alarm on 3 Aug 2026.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   schedule:
     - cron: "30 11 * * *"      # daily 11:30 UTC = 7:30pm Singapore time
@@ -7,6 +27,11 @@ on:
 
 permissions:
   contents: write
+  issues: write                 # needed to raise the failure notice
+
+concurrency:
+  group: ura-update             # never let two runs push at the same time
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -24,6 +49,9 @@ jobs:
         env:
           URA_ACCESS_KEY: ${{ secrets.URA_ACCESS_KEY }}
         run: python3 ura_update.py
+        # ura_update.py now refuses to write (and fails this step) if the pull
+        # returns too little data, any null price, or an implausible median.
+        # A red run here means the site kept its previous good prices.
 
       - name: Publish a clean root page
         run: cp Decoupling_Calculator.html index.html
@@ -31,16 +59,51 @@ jobs:
       - name: Stamp the update date
         run: date -u +%Y-%m-%d > last_updated.txt
 
-      - name: Commit if anything changed
+      - name: Commit and push (rebasing if anything else landed first)
         run: |
           git config user.name  "ura-bot"
           git config user.email "ura-bot@users.noreply.github.com"
           git add Decoupling_Calculator.html index.html last_updated.txt
-          git diff --staged --quiet || git commit -m "Auto-update URA benchmarks ($(date -u +%Y-%m-%d))"
-          git push
+          if git diff --staged --quiet; then
+            echo "Nothing changed — nothing to push."
+            exit 0
+          fi
+          git commit -m "Auto-update URA benchmarks ($(date -u +%Y-%m-%d))"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main && git push origin main; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push attempt $attempt failed (something else landed first) — retrying in 10s…"
+            sleep 10
+          done
+          echo "Could not push after 3 attempts."
+          exit 1
 
-      - name: Purge jsDelivr cache
-        if: always()
-        run: |
-          curl -s "https://purge.jsdelivr.net/gh/yuenweijie/Decoupling-Toolkit@main/last_updated.txt" || true
-          curl -s "https://purge.jsdelivr.net/gh/yuenweijie/Decoupling-Toolkit@main/index.html" || true
+      - name: Raise an issue if this run failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'URA auto-update failed';
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `The "Update URA benchmarks" run failed on ${new Date().toISOString().slice(0,10)}.\n\n`
+                       + `The site is still showing the last known-good prices — nothing bad was published.\n\n`
+                       + `Run log: ${url}\n\n`
+                       + `Most likely causes: the URA access key expired, URA's API was down, or the data `
+                       + `failed the sanity gate in ura_update.py (too few transactions / null / implausible price).`;
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'ura-update'
+            });
+            if (existing.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['ura-update']
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body
+              });
+            }
